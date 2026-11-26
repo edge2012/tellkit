@@ -1,0 +1,39 @@
+{
+  "python": "3.12.3",
+  "video": {
+    "codec_name": "h264",
+    "width": 1280,
+    "height": 720,
+    "r_frame_rate": "30/1",
+    "duration": "16.000000",
+    "nb_frames": "480"
+  },
+  "sha256": "645c2ca3ffdde7c5334ee61540093a155a9347926e4f664a804857ef85cf1632",
+  "actions": [
+    {
+      "action": "disappear",
+      "passed": true,
+      "opacity": [
+        1.0,
+        0.7490196078431373,
+        0.5019607843137255,
+        0.25098039215686274,
+        0.0
+      ],
+      "encoded_subject_pixels": {
+        "changed_pixel_fraction": 0.09959309895833333,
+        "mean_rgb_difference": 0.05254563390749818
+      }
+    }
+  ],
+  "dependency_count": 9,
+  "gpl_agpl_python_dependencies": [],
+  "source_python_files": 87,
+  "byte_identical_source_python_files": 86,
+  "changed_source_python_files": [
+    "app/visual_thresholds.py"
+  ],
+  "source_change": "Repository-local data path default only",
+  "adrs": 20,
+  "source_status_fingerprint": "335504ba5027f75d06028105ddf726b88c6eac5319ae38f7d50e763cd48a4433"
+}

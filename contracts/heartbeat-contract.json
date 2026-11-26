@@ -1,0 +1,7 @@
+{
+  "request": {"node_id":"test-node","attempt":1,"lease_token":"00000000-0000-0000-0000-000000000001","stage":"canon","progress":0},
+  "response": {"lease_expires_at":"2099-01-01T00:00:00Z","cancel":false,"state":"running"},
+  "request_types": {"node_id":"string","attempt":"integer","lease_token":"string","stage":"string","progress":"integer"},
+  "response_types": {"lease_expires_at":"string","cancel":"boolean","state":"string"},
+  "api_optional": ["progress"]
+}

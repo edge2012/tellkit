@@ -1,0 +1,3306 @@
+openapi: 3.1.0
+info:
+  title: Tellkit 公共 API（草案，待冻结）
+  version: 0.1.0
+  description: 来源：src/docs/architecture-v2.0.md §6；§3 仅辅助数据字段。所有路径显式声明鉴权，security
+    的空对象仅允许说明中限定的匿名资源。错误码与 errors.md 一致；未明确语义列入 README 待冻结项。
+servers:
+- url: http://192.0.2.1:8099
+  description: 一期 IP 直连
+paths:
+  /api/v1/episodes:
+    post:
+      summary: 提交新的一集
+      description: 父会话提交输入，经门禁和额度检查后创建异步任务；写请求必须携带幂等键。
+      operationId: submitEpisode
+      security:
+      - ParentSession: []
+      x-idempotency: required
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '202':
+          description: 提交新的一集成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcceptedJob'
+              example:
+                episode_id: 18f073f0-5ff1-4ea0-bb3f-1a6c8b991a01
+                version: 1
+                job_id: 65d7a861-4ef1-42db-b8c2-23260b0dd902
+                state: queued
+        '400':
+          $ref: '#/components/responses/Error400InvalidArgument'
+        '401':
+          $ref: '#/components/responses/Error401AuthRequired'
+        '403':
+          $ref: '#/components/responses/Error403Forbidden'
+        '404':
+          $ref: '#/components/responses/Error404NotFound'
+        '429':
+          $ref: '#/components/responses/Error429RateLimited'
+        '503':
+          $ref: '#/components/responses/Error503DependencyUnavailableGateDown'
+        '409':
+          $ref: '#/components/responses/Error409IdempotencyConflictRequestInProgress'
+        '402':
+          $ref: '#/components/responses/Error402QuotaExceeded'
+        '422':
+          $ref: '#/components/responses/Error422GateGuideGateRefuse'
+        '200':
+          description: 内容拒绝或一次追问；没有创建集、排队或扣额度
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InputOutcome'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitRequest'
+            example:
+              prompt: 六颗糖分给三个人
+      x-error-codes:
+      - INVALID_ARGUMENT
+      - AUTH_REQUIRED
+      - FORBIDDEN
+      - NOT_FOUND
+      - RATE_LIMITED
+      - DEPENDENCY_UNAVAILABLE
+      - GATE_DOWN
+      - IDEMPOTENCY_CONFLICT
+      - REQUEST_IN_PROGRESS
+      - QUOTA_EXCEEDED
+      - GATE_GUIDE
+      - GATE_REFUSE
+    get:
+      summary: 列出我的集或广场作品
+      description: 缺省 scope=mine 兼容原私密列表；scope=plaza 无需登录，返回官方及 visibility=published
+        的社区作品。官方固定在前，社区按 published_at DESC、id DESC。公开卡片及播放绑定 published_version；作者列表和详情显示
+        current_version 及 visibility。
+      operationId: listEpisodes
+      security:
+      - {}
+      - ParentSession: []
+      - ParentSessionCookie: []
+      x-idempotency: natural
+      parameters:
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/EpisodeScope'
+      responses:
+        '200':
+          description: 列出我的集成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EpisodeList'
+              example:
+                items:
+                - id: 18f073f0-5ff1-4ea0-bb3f-1a6c8b991a01
+                  title: 分糖
+                  status: making
+                  current_version: 1
+                  latest_version: 2
+                next_cursor: null
+        '400':
+          $ref: '#/components/responses/Error400InvalidArgument'
+        '401':
+          $ref: '#/components/responses/Error401AuthRequired'
+        '403':
+          $ref: '#/components/responses/Error403Forbidden'
+        '404':
+          $ref: '#/components/responses/Error404NotFound'
+        '429':
+          $ref: '#/components/responses/Error429RateLimited'
+        '503':
+          $ref: '#/components/responses/Error503DependencyUnavailable'
+      x-error-codes:
+      - INVALID_ARGUMENT
+      - AUTH_REQUIRED
+      - FORBIDDEN
+      - NOT_FOUND
+      - RATE_LIMITED
+      - DEPENDENCY_UNAVAILABLE
+  /api/v1/jobs/{job_id}:
+    get:
+      summary: 查询任务状态
+      description: 所属父会话读取任务进度、重试状态与阶段耗时；GET 天然幂等。
+      operationId: getJob
+      security:
+      - ParentSession: []
+      x-idempotency: natural
+      parameters:
+      - $ref: '#/components/parameters/JobId'
+      responses:
+        '200':
+          description: 查询任务状态成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+              example:
+                job_id: 65d7a861-4ef1-42db-b8c2-23260b0dd902
+                state: running
+                stage: claimed
+                progress: null
+                attempt: 1
+                retrying: false
+                timing_ms:
+                  queue: 2000
+                  render: 25000
+                  upload: 0
+                  total: 30000
+        '400':
+          $ref: '#/components/responses/Error400InvalidArgument'
+        '401':
+          $ref: '#/components/responses/Error401AuthRequired'
+        '403':
+          $ref: '#/components/responses/Error403Forbidden'
+        '404':
+          $ref: '#/components/responses/Error404NotFound'
+        '429':
+          $ref: '#/components/responses/Error429RateLimited'
+        '503':
+          $ref: '#/components/responses/Error503DependencyUnavailable'
+      x-error-codes:
+      - INVALID_ARGUMENT
+      - AUTH_REQUIRED
+      - FORBIDDEN
+      - NOT_FOUND
+      - RATE_LIMITED
+      - DEPENDENCY_UNAVAILABLE
+  /api/v1/episodes/{episode_id}:
+    get:
+      summary: 读取集详情
+      description: 账号所属资源仅限所属父会话，official 可匿名读取，已删和越租户资源返回 404；GET 天然幂等。
+      operationId: getEpisode
+      security:
+      - ParentSession: []
+      - {}
+      x-idempotency: natural
+      parameters:
+      - $ref: '#/components/parameters/EpisodeId'
+      responses:
+        '200':
+          description: 读取集详情成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EpisodeDetail'
+              example:
+                id: 18f073f0-5ff1-4ea0-bb3f-1a6c8b991a01
+                title: 分糖
+                status: making
+                current_version: 1
+                latest_version: 2
+                playable: true
+                summary:
+                  version: 1
+                  segments:
+                  - title: 平均分
+                    text: 每个人一样多
+        '400':
+          $ref: '#/components/responses/Error400InvalidArgument'
+        '401':
+          $ref: '#/components/responses/Error401AuthRequired'
+        '403':
+          $ref: '#/components/responses/Error403Forbidden'
+        '404':
+          $ref: '#/components/responses/Error404NotFound'
+        '429':
+          $ref: '#/components/responses/Error429RateLimited'
+        '503':
+          $ref: '#/components/responses/Error503DependencyUnavailable'
+      x-error-codes:
+      - INVALID_ARGUMENT
+      - AUTH_REQUIRED
+      - FORBIDDEN
+      - NOT_FOUND
+      - RATE_LIMITED
+      - DEPENDENCY_UNAVAILABLE
+    delete:
+      summary: 删除一集
+      description: 所属父会话标记删除并异步清理媒体，重复删除返回相同结果，不表示对象已清理；必须携带幂等键。
+      operationId: deleteEpisode
+      security:
+      - ParentSession: []
+      x-idempotency: required
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      - $ref: '#/components/parameters/EpisodeId'
+      responses:
+        '202':
+          description: 删除一集成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeletedEpisode'
+              example:
+                episode_id: 18f073f0-5ff1-4ea0-bb3f-1a6c8b991a01
+                deleted: true
+                media_purge: pending
+        '400':
+          $ref: '#/components/responses/Error400InvalidArgument'
+        '401':
+          $ref: '#/components/responses/Error401AuthRequired'
+        '403':
+          $ref: '#/components/responses/Error403Forbidden'
+        '404':
+          $ref: '#/components/responses/Error404NotFound'
+        '429':
+          $ref: '#/components/responses/Error429RateLimited'
+        '503':
+          $ref: '#/components/responses/Error503DependencyUnavailable'
+        '409':
+          $ref: '#/components/responses/Error409IdempotencyConflictRequestInProgress'
+      x-error-codes:
+      - INVALID_ARGUMENT
+      - AUTH_REQUIRED
+      - FORBIDDEN
+      - NOT_FOUND
+      - RATE_LIMITED
+      - DEPENDENCY_UNAVAILABLE
+      - IDEMPOTENCY_CONFLICT
+      - REQUEST_IN_PROGRESS
+  /api/v1/episodes/{episode_id}/versions:
+    post:
+      summary: 修改这一集或重试
+      description: 所属父会话改输入、重做画面或重试均重新门禁并创建新任务，不恢复旧任务终态；必须携带幂等键。
+      operationId: reviseEpisode
+      security:
+      - ParentSession: []
+      x-idempotency: required
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      - $ref: '#/components/parameters/EpisodeId'
+      responses:
+        '202':
+          description: 修改这一集或重试成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcceptedJob'
+              example:
+                episode_id: 18f073f0-5ff1-4ea0-bb3f-1a6c8b991a01
+                version: 2
+                job_id: 65d7a861-4ef1-42db-b8c2-23260b0dd902
+                state: queued
+        '400':
+          $ref: '#/components/responses/Error400InvalidArgument'
+        '401':
+          $ref: '#/components/responses/Error401AuthRequired'
+        '403':
+          $ref: '#/components/responses/Error403Forbidden'
+        '404':
+          $ref: '#/components/responses/Error404NotFound'
+        '429':
+          $ref: '#/components/responses/Error429RateLimited'
+        '503':
+          $ref: '#/components/responses/Error503DependencyUnavailableGateDown'
+        '409':
+          $ref: '#/components/responses/Error409IdempotencyConflictRequestInProgressActiveJobVersionConflict'
+        '402':
+          $ref: '#/components/responses/Error402QuotaExceeded'
+        '422':
+          $ref: '#/components/responses/Error422GateGuideGateRefuse'
+        '200':
+          description: 内容拒绝或一次追问；没有创建集、排队或扣额度
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InputOutcome'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviseRequest'
+            example:
+              base_version: 1
+              revision_kind: text
+              prompt: 九颗糖分给三个人
+      x-error-codes:
+      - INVALID_ARGUMENT
+      - AUTH_REQUIRED
+      - FORBIDDEN
+      - NOT_FOUND
+      - RATE_LIMITED
+      - DEPENDENCY_UNAVAILABLE
+      - GATE_DOWN
+      - IDEMPOTENCY_CONFLICT
+      - REQUEST_IN_PROGRESS
+      - ACTIVE_JOB
+      - VERSION_CONFLICT
+      - QUOTA_EXCEEDED
+      - GATE_GUIDE
+      - GATE_REFUSE
+  /api/v1/search:
+    get:
+      summary: 搜索可见的集
+      description: 搜索公开可见的集；无会话或无效会话按匿名处理，登录父用户额外可见自己的集。scope 可省略；mine 与默认相同，official 仅公开集。仅搜索 title/group_key，不搜索原始 prompt。空白查询返回 items=[]、next_cursor=null、empty_reason=empty_query；无匹配返回 empty_reason=no_matches。
+      operationId: searchEpisodes
+      security:
+      - {}
+      - ParentSession: []
+      x-idempotency: natural
+      parameters:
+      - $ref: '#/components/parameters/SearchScope'
+      - $ref: '#/components/parameters/Query'
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: 搜索可见的集成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResults'
+              example:
+                items:
+                - id: 18f073f0-5ff1-4ea0-bb3f-1a6c8b991a01
+                  title: 分糖
+                next_cursor: null
+        '400':
+          $ref: '#/components/responses/Error400InvalidArgumentInvalidScope'
+        '403':
+          $ref: '#/components/responses/Error403Forbidden'
+        '404':
+          $ref: '#/components/responses/Error404NotFound'
+        '429':
+          $ref: '#/components/responses/Error429RateLimited'
+        '503':
+          $ref: '#/components/responses/Error503DependencyUnavailable'
+      x-error-codes:
+      - INVALID_ARGUMENT
+      - INVALID_SCOPE
+      - FORBIDDEN
+      - NOT_FOUND
+      - RATE_LIMITED
+      - DEPENDENCY_UNAVAILABLE
+  /api/v1/episodes/{episode_id}/playback:
+    get:
+      summary: 取得一个播放地址
+      description: 所属父/子会话可播放自家资源，official 可匿名；视口高大于宽选竖幅，否则或缺省选横幅，旋转时保持版本/进度重新取址；GET
+        天然幂等但每次重新签名，签名过期后重新鉴权取址。
+      operationId: getPlayback
+      security:
+      - ParentSession: []
+      - ChildSession: []
+      - {}
+      x-idempotency: natural
+      parameters:
+      - $ref: '#/components/parameters/EpisodeId'
+      - $ref: '#/components/parameters/ViewportWidth'
+      - $ref: '#/components/parameters/ViewportHeight'
+      - $ref: '#/components/parameters/Version'
+      - $ref: '#/components/parameters/ExcludeKind'
+      responses:
+        '200':
+          description: 取得一个播放地址成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Playback'
+              example:
+                version: 1
+                kind: video_portrait
+                url: http://192.0.2.1/media/967c780d-d22b-4f85-ac75-cb8093a0bf47/18f073f0-5ff1-4ea0-bb3f-1a6c8b991a01/v1/video_portrait.mp4?e=1794189600&s=example-signature
+                expires_at: '2026-11-09T02:00:00Z'
+          headers:
+            Cache-Control:
+              description: 不缓存签名结果。
+              schema:
+                $ref: '#/components/schemas/NoStore'
+              example: no-store
+        '400':
+          $ref: '#/components/responses/Error400InvalidArgument'
+        '401':
+          $ref: '#/components/responses/Error401AuthRequired'
+        '403':
+          $ref: '#/components/responses/Error403Forbidden'
+        '404':
+          $ref: '#/components/responses/Error404NotFound'
+        '429':
+          $ref: '#/components/responses/Error429RateLimited'
+        '503':
+          $ref: '#/components/responses/Error503DependencyUnavailableMediaUnavailable'
+        '409':
+          $ref: '#/components/responses/Error409NotReady'
+        '410':
+          $ref: '#/components/responses/Error410MediaExpired'
+      x-error-codes:
+      - INVALID_ARGUMENT
+      - AUTH_REQUIRED
+      - FORBIDDEN
+      - NOT_FOUND
+      - RATE_LIMITED
+      - DEPENDENCY_UNAVAILABLE
+      - MEDIA_UNAVAILABLE
+      - NOT_READY
+      - MEDIA_EXPIRED
+  /api/v1/child/episodes:
+    get:
+      summary: 列出儿童可播放的集
+      description: 子会话或父会话预览仅列自家未删且可播集，不包含 prompt、失败原因或用户资料；GET 天然幂等。
+      operationId: listChildEpisodes
+      security:
+      - ChildSession: []
+      - ParentSession: []
+      x-idempotency: natural
+      parameters:
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: 列出儿童可播放的集成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChildEpisodeList'
+              example:
+                items:
+                - id: 18f073f0-5ff1-4ea0-bb3f-1a6c8b991a01
+                  title: 分糖
+                  current_version: 1
+                next_cursor: null
+        '400':
+          $ref: '#/components/responses/Error400InvalidArgument'
+        '401':
+          $ref: '#/components/responses/Error401AuthRequired'
+        '403':
+          $ref: '#/components/responses/Error403Forbidden'
+        '404':
+          $ref: '#/components/responses/Error404NotFound'
+        '429':
+          $ref: '#/components/responses/Error429RateLimited'
+        '503':
+          $ref: '#/components/responses/Error503DependencyUnavailable'
+      x-error-codes:
+      - INVALID_ARGUMENT
+      - AUTH_REQUIRED
+      - FORBIDDEN
+      - NOT_FOUND
+      - RATE_LIMITED
+      - DEPENDENCY_UNAVAILABLE
+  /api/v1/child-sessions:
+    post:
+      summary: 签发儿童会话
+      description: 父会话签发仅可读取儿童列表和自家播放的会话，有效期至多 2h 且不超过父会话；必须携带幂等键，记录仅存会话引用，短期安全重放不向
+        PG 写明文 token。
+      operationId: createChildSession
+      security:
+      - ParentSession: []
+      x-idempotency: required
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '201':
+          description: 签发儿童会话成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+              example:
+                token: example-opaque-child-token
+                expires_at: '2026-11-09T02:00:00Z'
+        '400':
+          $ref: '#/components/responses/Error400InvalidArgument'
+        '401':
+          $ref: '#/components/responses/Error401AuthRequired'
+        '403':
+          $ref: '#/components/responses/Error403Forbidden'
+        '404':
+          $ref: '#/components/responses/Error404NotFound'
+        '429':
+          $ref: '#/components/responses/Error429RateLimited'
+        '503':
+          $ref: '#/components/responses/Error503DependencyUnavailable'
+        '409':
+          $ref: '#/components/responses/Error409IdempotencyConflictRequestInProgress'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmptyRequest'
+            example: {}
+      x-error-codes:
+      - INVALID_ARGUMENT
+      - AUTH_REQUIRED
+      - FORBIDDEN
+      - NOT_FOUND
+      - RATE_LIMITED
+      - DEPENDENCY_UNAVAILABLE
+      - IDEMPOTENCY_CONFLICT
+      - REQUEST_IN_PROGRESS
+  /api/v1/jobs/{job_id}/cancel:
+    post:
+      summary: 取消任务
+      description: 所属父会话请求取消任务，已取消返回 200，已完成返回冲突；必须携带幂等键。
+      operationId: cancelJob
+      security:
+      - ParentSession: []
+      x-idempotency: required
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      - $ref: '#/components/parameters/JobId'
+      responses:
+        '202':
+          description: 取消任务成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CancellingJob'
+              example:
+                job_id: 65d7a861-4ef1-42db-b8c2-23260b0dd902
+                state: cancelling
+        '200':
+          description: 取消任务成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CancelledJob'
+              example:
+                job_id: 65d7a861-4ef1-42db-b8c2-23260b0dd902
+                state: cancelled
+        '400':
+          $ref: '#/components/responses/Error400InvalidArgument'
+        '401':
+          $ref: '#/components/responses/Error401AuthRequired'
+        '403':
+          $ref: '#/components/responses/Error403Forbidden'
+        '404':
+          $ref: '#/components/responses/Error404NotFound'
+        '429':
+          $ref: '#/components/responses/Error429RateLimited'
+        '503':
+          $ref: '#/components/responses/Error503DependencyUnavailable'
+        '409':
+          $ref: '#/components/responses/Error409IdempotencyConflictRequestInProgressAlreadyCompleted'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmptyRequest'
+            example: {}
+      x-error-codes:
+      - INVALID_ARGUMENT
+      - AUTH_REQUIRED
+      - FORBIDDEN
+      - NOT_FOUND
+      - RATE_LIMITED
+      - DEPENDENCY_UNAVAILABLE
+      - IDEMPOTENCY_CONFLICT
+      - REQUEST_IN_PROGRESS
+      - ALREADY_COMPLETED
+  /api/v1/plaza/groups:
+    get:
+      summary: 列出广场分组
+      description: 匿名读取审核后的 official 分组，首屏每组 2×columns 条，看更多使用组内游标显式分页而非无限加载；GET 天然幂等。
+      operationId: listPlazaGroups
+      security: []
+      x-idempotency: natural
+      parameters:
+      - $ref: '#/components/parameters/Columns'
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/GroupKey'
+      responses:
+        '200':
+          description: 列出广场分组成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlazaGroups'
+              example:
+                groups:
+                - group_key: count
+                  items: []
+                  remaining: 8
+                  next_cursor: example-opaque-count-cursor
+        '400':
+          $ref: '#/components/responses/Error400InvalidArgument'
+        '401':
+          $ref: '#/components/responses/Error401AuthRequired'
+        '403':
+          $ref: '#/components/responses/Error403Forbidden'
+        '404':
+          $ref: '#/components/responses/Error404NotFound'
+        '429':
+          $ref: '#/components/responses/Error429RateLimited'
+        '503':
+          $ref: '#/components/responses/Error503DependencyUnavailable'
+      x-error-codes:
+      - INVALID_ARGUMENT
+      - AUTH_REQUIRED
+      - FORBIDDEN
+      - NOT_FOUND
+      - RATE_LIMITED
+      - DEPENDENCY_UNAVAILABLE
+      x-draft-open-questions:
+      - §6 未定义看更多的组选择参数，以及 limit 与首屏 2×columns 的优先级；这里只暴露统一 limit/cursor，不新增组查询参数，冻结前需确认。
+  /api/v1/auth/email/challenges:
+    post:
+      summary: 发起邮箱验证
+      description: 匿名请求由 IdP 签发至多 10 分钟的 challenge，按 IP/目标频控且账号存在与否同响应；必须携带幂等键，匿名幂等由
+        IdP 实现。
+      operationId: createEmailChallenge
+      security: []
+      x-idempotency: required
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '202':
+          description: 发起邮箱验证成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailChallenge'
+              example:
+                challenge_id: 5aa1fbec-e648-483f-b830-4419d6afc047
+                expires_in: 600
+        '400':
+          $ref: '#/components/responses/Error400InvalidArgument'
+        '401':
+          $ref: '#/components/responses/Error401AuthRequired'
+        '403':
+          $ref: '#/components/responses/Error403Forbidden'
+        '404':
+          $ref: '#/components/responses/Error404NotFound'
+        '429':
+          $ref: '#/components/responses/Error429RateLimited'
+        '503':
+          $ref: '#/components/responses/Error503DependencyUnavailable'
+        '409':
+          $ref: '#/components/responses/Error409IdempotencyConflictRequestInProgress'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailChallengeRequest'
+            example:
+              email: parent@example.org
+      x-error-codes:
+      - INVALID_ARGUMENT
+      - AUTH_REQUIRED
+      - FORBIDDEN
+      - NOT_FOUND
+      - RATE_LIMITED
+      - DEPENDENCY_UNAVAILABLE
+      - IDEMPOTENCY_CONFLICT
+      - REQUEST_IN_PROGRESS
+  /api/v1/auth/email/verify:
+    post:
+      summary: 验证邮箱并取得父会话
+      description: 匿名提交 challenge 和单次验证码换取至多 24h 的父会话；必须携带幂等键，由 IdP 保证重放不重复消耗验证码，Tellkit
+        不存验证码。
+      operationId: verifyEmail
+      security: []
+      x-idempotency: required
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: 验证邮箱并取得父会话成功
+          headers:
+            Set-Cookie:
+              description: '浏览器会话 Cookie：Set-Cookie: tk_session=…; HttpOnly; Secure;
+                SameSite=Lax; Max-Age=…; Path=/。 Max-Age 为会话剩余有效秒数，与 expires_at 一致，不改变父会话至多
+                24h 的既有上限。 响应体 token 保持原语义，作为非浏览器客户端通过 Bearer 认证的兜底。'
+              schema:
+                type: string
+              example: tk_session=example-opaque-parent-token; HttpOnly; Secure; SameSite=Lax;
+                Max-Age=86400; Path=/
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailVerifyResponse'
+              example:
+                token: example-opaque-parent-token
+                expires_at: '2026-11-10T00:00:00Z'
+                account:
+                  email_masked: dzq***@gmail.com
+                  nickname: 纸飞机
+                  avatar_seed: example-avatar-seed
+                  is_new: false
+        '400':
+          $ref: '#/components/responses/Error400InvalidArgument'
+        '401':
+          $ref: '#/components/responses/Error401AuthRequiredInvalidCode'
+        '403':
+          $ref: '#/components/responses/Error403Forbidden'
+        '404':
+          $ref: '#/components/responses/Error404NotFound'
+        '429':
+          $ref: '#/components/responses/Error429RateLimited'
+        '503':
+          $ref: '#/components/responses/Error503DependencyUnavailable'
+        '409':
+          $ref: '#/components/responses/Error409IdempotencyConflictRequestInProgress'
+        '410':
+          $ref: '#/components/responses/Error410ChallengeExpired'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailVerifyRequest'
+            example:
+              challenge_id: 5aa1fbec-e648-483f-b830-4419d6afc047
+              code: '123456'
+      x-error-codes:
+      - INVALID_ARGUMENT
+      - AUTH_REQUIRED
+      - INVALID_CODE
+      - FORBIDDEN
+      - NOT_FOUND
+      - RATE_LIMITED
+      - DEPENDENCY_UNAVAILABLE
+      - IDEMPOTENCY_CONFLICT
+      - REQUEST_IN_PROGRESS
+  /api/v1/me:
+    get:
+      summary: 获取当前登录者
+      description: 读取当前父会话关联的账号信息；无有效会话返回 401。浏览器可使用 tk_session Cookie。
+      operationId: getMe
+      security:
+      - ParentSession: []
+      - ParentSessionCookie: []
+      x-idempotency: natural
+      responses:
+        '200':
+          description: 当前登录者信息
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeResponse'
+              example:
+                email_masked: dzq***@gmail.com
+                nickname: 纸飞机
+                avatar_seed: example-avatar-seed
+                episode_count: 3
+                quota:
+                  limit: 5
+                  used: 3
+                  remaining: 2
+                  refund_pending: 0
+                created_at: '2026-11-10T00:00:00Z'
+                is_new: false
+        '401':
+          $ref: '#/components/responses/Error401AuthRequired'
+    patch:
+      summary: 修改当前登录者昵称
+      description: 昵称为 2–12 个字符，允许中英文/数字，不允许空白开头结尾、不允许连续空白、不允许纯符号。 昵称允许重复。浏览器可使用 tk_session
+        Cookie；无有效会话返回 401。
+      operationId: updateMe
+      security:
+      - ParentSession: []
+      - ParentSessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMeRequest'
+            example:
+              nickname: 小台灯
+      responses:
+        '200':
+          description: 更新后的当前登录者信息，与 GET /api/v1/me 结构相同
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeResponse'
+        '401':
+          $ref: '#/components/responses/Error401AuthRequired'
+        '422':
+          description: 昵称长度或字符校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NicknameValidationError'
+              example:
+                error:
+                  code: INVALID_NICKNAME
+                  message: 昵称须为 2–12 个字符，且符合字符与空白规则
+                  retryable: false
+                  request_id: e83cc075-f3b0-45de-981a-477f34b7a884
+  /api/v1/auth/logout:
+    post:
+      summary: 退出当前会话
+      description: 撤销 tk_session Cookie 或 Bearer token 对应的当前父会话并清除 Cookie。 幂等；未提供会话、会话不存在或已过期也返回
+        204，无响应体，无需幂等键。
+      operationId: logout
+      security: []
+      x-idempotency: natural
+      responses:
+        '204':
+          description: 已退出；无响应体，会话不存在也返回此状态
+          headers:
+            Set-Cookie:
+              description: 清除浏览器会话 Cookie，Max-Age=0，Path 与签发时一致。
+              schema:
+                type: string
+              example: tk_session=; HttpOnly; Secure; SameSite=Lax; Max-Age=0; Path=/
+  /api/v1/episodes/{episode_id}/cancel:
+    post:
+      summary: 取消作品最新任务
+      description: 所属父会话请求取消任务，已取消返回 200，已完成返回冲突；必须携带幂等键。
+      operationId: cancelEpisode
+      security:
+      - ParentSession: []
+      x-idempotency: required
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      - $ref: '#/components/parameters/EpisodeId'
+      responses:
+        '202':
+          description: 取消任务成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CancellingJob'
+              example:
+                job_id: 65d7a861-4ef1-42db-b8c2-23260b0dd902
+                state: cancelling
+        '200':
+          description: 取消任务成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CancelledJob'
+              example:
+                job_id: 65d7a861-4ef1-42db-b8c2-23260b0dd902
+                state: cancelled
+        '400':
+          $ref: '#/components/responses/Error400InvalidArgument'
+        '401':
+          $ref: '#/components/responses/Error401AuthRequired'
+        '403':
+          $ref: '#/components/responses/Error403Forbidden'
+        '404':
+          $ref: '#/components/responses/Error404NotFound'
+        '429':
+          $ref: '#/components/responses/Error429RateLimited'
+        '503':
+          $ref: '#/components/responses/Error503DependencyUnavailable'
+        '409':
+          $ref: '#/components/responses/Error409IdempotencyConflictRequestInProgressAlreadyCompleted'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmptyRequest'
+            example: {}
+      x-error-codes:
+      - INVALID_ARGUMENT
+      - AUTH_REQUIRED
+      - FORBIDDEN
+      - NOT_FOUND
+      - RATE_LIMITED
+      - DEPENDENCY_UNAVAILABLE
+      - IDEMPOTENCY_CONFLICT
+      - REQUEST_IN_PROGRESS
+      - ALREADY_COMPLETED
+  /api/v1/auth/password/register:
+    post:
+      operationId: registerPassword
+      summary: registerPassword
+      security: []
+      description: 使用最新、未消费且未过期的邮箱 challenge 验证码注册并登录；验证码原子消费。已有账号返回 409 ACCOUNT_EXISTS。每
+        IP 每小时至多 50 次。 密码为 8–72 UTF-8 字节，非纯空白、非常见弱密码且不能与邮箱前缀相同。无需幂等键，不重放响应。无密码老账号设置时
+        current_password 传空字符串。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/registerPasswordRequest'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailVerifyResponse'
+          headers:
+            Set-Cookie:
+              description: tk_session；HttpOnly、Secure、SameSite=Lax、Path=/；Max-Age
+                与 expires_at 一致，使用既有会话有效期配置。
+              schema:
+                type: string
+        '400':
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/auth/password/login:
+    post:
+      operationId: loginPassword
+      summary: loginPassword
+      security: []
+      description: 邮箱和密码登录。失败统一为 401 INVALID_CREDENTIALS；email_hash 与 IP 分别累计失败，第
+        5 次返回 429 RATE_LIMITED，锁定 15 分钟；锁定期间正确密码也拒绝。成功清空两维计数。 密码为 8–72 UTF-8 字节，非纯空白、非常见弱密码且不能与邮箱前缀相同。无需幂等键，不重放响应。无密码老账号设置时
+        current_password 传空字符串。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/loginPasswordRequest'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailVerifyResponse'
+          headers:
+            Set-Cookie:
+              description: tk_session；HttpOnly、Secure、SameSite=Lax、Path=/；Max-Age
+                与 expires_at 一致，使用既有会话有效期配置。
+              schema:
+                type: string
+        '400':
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/auth/password/forgot:
+    post:
+      operationId: forgotPassword
+      summary: forgotPassword
+      security: []
+      description: 始终返回相同 202 空对象（含未知邮箱、无密码账号、发信失败及限流）。仅为有效且已有密码的账号发重置码；沿用 challenge
+        邮箱冷却与 IP 限流。 密码为 8–72 UTF-8 字节，非纯空白、非常见弱密码且不能与邮箱前缀相同。无需幂等键，不重放响应。无密码老账号设置时
+        current_password 传空字符串。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/forgotPasswordRequest'
+      responses:
+        '202':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/auth/password/reset:
+    post:
+      operationId: resetPassword
+      summary: resetPassword
+      security: []
+      description: 重置码单次使用，10 分钟过期。成功撤销所有其它父会话及全部子会话；若携带本账号有效父会话 cookie 或 Bearer token
+        则保留该会话，否则撤销全部会话。每 IP 每小时至多 50 次。 密码为 8–72 UTF-8 字节，非纯空白、非常见弱密码且不能与邮箱前缀相同。无需幂等键，不重放响应。无密码老账号设置时
+        current_password 传空字符串。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/resetPasswordRequest'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/me/password:
+    post:
+      operationId: changePassword
+      summary: changePassword
+      security:
+      - BearerAuth: []
+      description: 需有效父会话。已有密码需验证 current_password；老账号首次设置传空字符串。成功撤销所有其它父会话及全部子会话。
+        密码为 8–72 UTF-8 字节，非纯空白、非常见弱密码且不能与邮箱前缀相同。无需幂等键，不重放响应。无密码老账号设置时 current_password
+        传空字符串。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/changePasswordRequest'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: 错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/me/episodes:
+    get:
+      summary: 列出我的集
+      description: 父会话按游标读取自己的集；GET 天然幂等。
+      operationId: listMyEpisodes
+      security:
+      - ParentSession: []
+      x-idempotency: natural
+      parameters:
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: 列出我的集成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EpisodeList'
+              example:
+                items:
+                - id: 18f073f0-5ff1-4ea0-bb3f-1a6c8b991a01
+                  title: 分糖
+                  status: making
+                  current_version: 1
+                  latest_version: 2
+                next_cursor: null
+        '400':
+          $ref: '#/components/responses/Error400InvalidArgument'
+        '401':
+          $ref: '#/components/responses/Error401AuthRequired'
+        '403':
+          $ref: '#/components/responses/Error403Forbidden'
+        '404':
+          $ref: '#/components/responses/Error404NotFound'
+        '429':
+          $ref: '#/components/responses/Error429RateLimited'
+        '503':
+          $ref: '#/components/responses/Error503DependencyUnavailable'
+      x-error-codes:
+      - INVALID_ARGUMENT
+      - AUTH_REQUIRED
+      - FORBIDDEN
+      - NOT_FOUND
+      - RATE_LIMITED
+      - DEPENDENCY_UNAVAILABLE
+  /api/v1/episodes/{episode_id}/publish:
+    post:
+      operationId: publishEpisode
+      security:
+      - ParentSession: []
+      - ParentSessionCookie: []
+      parameters:
+      - $ref: '#/components/parameters/EpisodeId'
+      responses:
+        '202':
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublishEpisodeResponse'
+        '400':
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      description: 免人工预审。声明必须为 true；当前 ready 版本须为 15–90 秒、至少四场、有音轨和封面。读取该版本已生成的 storyboard.json
+        全部旁白及标题，复用现有 Gate；缺失分镜或素材拒发。账号 active 且有 settle 记录。按 Asia/Shanghai 自然日、账号所有工作区的
+        episode.published_at 计数，每天最多三集；撤回和删除保留时间戳。相同已发布版本重试返回原时间。累计两次举报后不可自行重新上架。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/publishEpisodeRequest'
+  /api/v1/episodes/{episode_id}/unpublish:
+    post:
+      operationId: unpublishEpisode
+      security:
+      - ParentSession: []
+      - ParentSessionCookie: []
+      parameters:
+      - $ref: '#/components/parameters/EpisodeId'
+      responses:
+        '202':
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnpublishEpisodeResponse'
+        '400':
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      description: 仅作者；状态幂等，重复撤回均返回 202 private。保留 published_at 和举报计数。无需 Idempotency-Key。
+  /api/v1/episodes/{episode_id}/report:
+    post:
+      operationId: reportEpisode
+      security:
+      - ParentSession: []
+      - ParentSessionCookie: []
+      parameters:
+      - $ref: '#/components/parameters/EpisodeId'
+      responses:
+        '202':
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      description: 需有效 active 父账号，举报社区作品。按账号标识去重，跨会话及工作区重复举报不累加。第二位举报者触发 hidden_pending_review，立即退出广场及公开详情/播放接口；作者仍可见。无需
+        Idempotency-Key。 作者不可举报自己工作区的作品，返回 400 CANNOT_REPORT_OWN。管理员复核结清本轮举报后可再次举报。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/reportEpisodeRequest'
+components:
+  securitySchemes:
+    ParentSessionCookie:
+      type: apiKey
+      in: cookie
+      name: tk_session
+      description: 浏览器父会话凭据，与 ParentSession 的 Bearer token 对应同类会话；HttpOnly、Secure、SameSite=Lax，Path=/。
+    ParentSession:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque-parent
+      description: 父会话上限 24h；API 仅存 token_hash。
+    ChildSession:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque-child
+      description: 儿童只读会话上限 2h 且不超过父会话；不得提交、修改、删除或普通搜索。
+  parameters:
+    GroupKey:
+      name: group_key
+      in: query
+      required: false
+      description: 只取某一组（缺省返回全部分组）。配合 limit 使用时，limit 优先于默认的 2×columns。
+      schema:
+        type: string
+        maxLength: 32
+        pattern: ^[a-z0-9_-]+$
+      example: count
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        $ref: '#/components/schemas/UUID'
+      description: 客户端 UUID；workspace+principal+operation 作用域。同键同规范化请求重放原结果；不同 body
+        返回 409 IDEMPOTENCY_CONFLICT。处理中返回 409 REQUEST_IN_PROGRESS 和 Retry-After。完成键保留至
+        workspace 生命周期结束；删除后重放返回 tombstone，不重建任务。匿名身份接口由 IdP 实现幂等。
+    EpisodeId:
+      name: episode_id
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/UUID'
+    JobId:
+      name: job_id
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/UUID'
+    Limit:
+      name: limit
+      in: query
+      required: false
+      schema:
+        $ref: '#/components/schemas/Limit'
+    Cursor:
+      name: cursor
+      in: query
+      required: false
+      schema:
+        $ref: '#/components/schemas/Cursor'
+    SearchScope:
+      name: scope
+      in: query
+      required: false
+      schema:
+        $ref: '#/components/schemas/Scope'
+    Scope:
+      name: scope
+      in: query
+      required: true
+      schema:
+        $ref: '#/components/schemas/Scope'
+    Query:
+      name: q
+      in: query
+      required: true
+      schema:
+        $ref: '#/components/schemas/SearchQuery'
+    ViewportWidth:
+      name: viewport_width
+      in: query
+      required: false
+      schema:
+        $ref: '#/components/schemas/ViewportDimension'
+    ViewportHeight:
+      name: viewport_height
+      in: query
+      required: false
+      schema:
+        $ref: '#/components/schemas/ViewportDimension'
+    Version:
+      name: version
+      in: query
+      required: false
+      schema:
+        $ref: '#/components/schemas/Version'
+      description: 缺省当前已发布版；指定版本必须已发布且仍获授权。
+    ExcludeKind:
+      name: exclude_kind
+      in: query
+      required: false
+      schema:
+        $ref: '#/components/schemas/VideoKind'
+      description: 播放错误后排除此画幅，申请同版另一画幅；仍只返回一个 URL。
+    Columns:
+      name: columns
+      in: query
+      required: false
+      schema:
+        $ref: '#/components/schemas/Columns'
+      description: 首屏每组 2×columns 条；§6 未规定 columns 缺省值。
+    EpisodeScope:
+      name: scope
+      in: query
+      schema:
+        type: string
+        enum:
+        - mine
+        - plaza
+      description: Default mine; plaza is public and returns official first, then
+        community by publication time.
+  schemas:
+    StoryboardShape:
+      type: string
+      enum: ["ape_bent", "ape_upright", "apple", "arrow", "bacteria", "block", "boat", "book", "bowl", "brain", "campfire", "candy", "car", "card", "channel", "charge", "check", "child", "circle", "cloud", "cold", "cookie", "cookie_half", "cookie_large", "cookie_small", "cookie_whole", "cross", "cup", "curved_arrow", "diagram_box", "drop", "drum", "ear", "ear_section", "earth", "foot_left", "foot_right", "force", "grass", "graupel", "ground", "heart", "heat", "house", "human_bent", "human_standing", "ice", "ice_block", "ice_melting", "jar", "knife", "lightning", "many", "memory_card", "moon", "mountain", "question", "rain", "rain_basin", "rainbow", "river", "rotation_axis", "rotation_globe", "route_long", "route_short", "shoe", "shoe_left", "shoe_right", "silhouette_leaning", "silhouette_quadruped", "silhouette_upright", "silhouette_upright_tool", "sleeping_child", "sound", "spear", "square", "star", "stick", "stone", "stone_axe", "sugar_grains", "sugar_solution", "sun", "sun_ray", "tank", "tank_stone", "tank_wood", "time", "timeline", "timeline_axis", "tooth", "toothbrush", "tree", "triangle", "vapor_particles", "vibration", "water", "water_cup_tall", "water_cup_wide", "water_drop", "wind", "wood"]
+    StoryboardLayout:
+      type: string
+      enum: ["single", "compare", "sequence", "stack", "ladder", "zoom", "narration"]
+    Storyboard:
+      $ref: "./storyboard.schema.json"
+    WorkerBrief:
+      type: object
+      additionalProperties: false
+      required:
+      - prompt
+      - child_age
+      - max_seconds
+      properties:
+        prompt:
+          type: string
+        child_age:
+          type: integer
+        max_seconds:
+          type: integer
+          minimum: 20
+          maximum: 180
+          default: 90
+          description: Duration upper bound only; content determines actual duration.
+            Configured by EPISODE_MAX_SECONDS.
+    EmailMasked:
+      type: string
+      description: 邮箱脱敏：本地部分保留前 3 位（不足 3 位保留 1 位），其余用 ***，域名完整保留。
+      examples:
+      - dzq***@gmail.com
+      - a***@example.com
+    Nickname:
+      type: string
+      minLength: 2
+      maxLength: 12
+      description: 2–12 个字符，允许中英文/数字，不允许空白开头结尾、不允许连续空白，不允许纯符号；允许重复。
+    AccountSummary:
+      type: object
+      additionalProperties: false
+      required:
+      - email_masked
+      - nickname
+      - avatar_seed
+      - is_new
+      properties:
+        email_masked:
+          $ref: '#/components/schemas/EmailMasked'
+        nickname:
+          $ref: '#/components/schemas/Nickname'
+        avatar_seed:
+          type: string
+          description: 用于生成头像的稳定种子，不是上传图片地址。
+        is_new:
+          type: boolean
+          description: true 表示本次邮箱验证新建了账号，前端据此进入欢迎页；已有账号为 false。
+    EmailVerifyResponse:
+      type: object
+      additionalProperties: false
+      description: 在原 Session 响应字段基础上仅增加 account；token 与 expires_at 的类型、必填性和语义不变。
+      required:
+      - token
+      - expires_at
+      properties:
+        token:
+          $ref: '#/components/schemas/Token'
+        expires_at:
+          $ref: '#/components/schemas/UTCDateTime'
+        account:
+          $ref: '#/components/schemas/AccountSummary'
+          description: 新增账号摘要；为兼容既有响应未加入 required。
+        needs_password:
+          type: boolean
+          description: 无密码老账号返回 true；请通过 POST /me/password 设置密码。
+    MeResponse:
+      type: object
+      additionalProperties: false
+      required:
+      - email_masked
+      - nickname
+      - avatar_seed
+      - episode_count
+      - created_at
+      - is_new
+      - quota
+      properties:
+        quota:
+          $ref: '#/components/schemas/AccountQuota'
+        email_masked:
+          $ref: '#/components/schemas/EmailMasked'
+        nickname:
+          $ref: '#/components/schemas/Nickname'
+        avatar_seed:
+          type: string
+          description: 用于生成头像的稳定种子，不是上传图片地址。
+        episode_count:
+          $ref: '#/components/schemas/Count'
+          description: 当前账号的集数。
+        created_at:
+          $ref: '#/components/schemas/UTCDateTime'
+          description: 账号创建时间。
+        is_new:
+          type: boolean
+          description: 当前会话对应的邮箱验证是否新建了账号；与该次 verify 的 account.is_new 一致，读取或改昵称不改变此标记。
+    UpdateMeRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - nickname
+      properties:
+        nickname:
+          $ref: '#/components/schemas/Nickname'
+    NicknameValidationError:
+      type: object
+      additionalProperties: false
+      required:
+      - error
+      properties:
+        error:
+          type: object
+          additionalProperties: false
+          required:
+          - code
+          - message
+          - retryable
+          - request_id
+          properties:
+            code:
+              type: string
+              const: INVALID_NICKNAME
+              description: 仅用于 PATCH /api/v1/me 的 422；不改变既有 ErrorCode 枚举及 HTTP 映射。
+            message:
+              type: string
+            retryable:
+              type: boolean
+              const: false
+            request_id:
+              $ref: '#/components/schemas/UUID'
+    UUID:
+      type: string
+      format: uuid
+    UTCDateTime:
+      type: string
+      format: date-time
+      pattern: Z$
+      description: UTC 时间，以 Z 结尾。
+    Text:
+      type: string
+    Boolean:
+      type: boolean
+    Version:
+      type: integer
+      minimum: 1
+    CurrentVersion:
+      type:
+      - integer
+      - 'null'
+      minimum: 1
+      description: 当前已发布版本；尚无发布版本时为 null。
+    LatestVersion:
+      type: integer
+      minimum: 0
+    Limit:
+      type: integer
+      default: 20
+      minimum: 1
+      maximum: 50
+    Cursor:
+      type: string
+      description: 不透明的 (created_at,id) 游标；客户端原样回传。
+    CardSubtitle:
+      type: string
+      maxLength: 20
+      description: 卡片副标题，≤10 个汉字（20 字符），单行省略；由内容侧摘要生成，不用原始 prompt。
+    DurationSeconds:
+      type: integer
+      minimum: 1
+      maximum: 600
+      description: 成片时长（秒）。不可播放时为省略字段，不返回 0。
+    CoverURL:
+      type: string
+      description: 封面（成片首帧）的带签名 URL，TTL 60 分钟；不可播放时省略。
+    NextCursor:
+      type:
+      - string
+      - 'null'
+      description: 下一页不透明游标；无下一页为 null。
+    Prompt:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    Count:
+      type: integer
+      minimum: 0
+    ViewportDimension:
+      type: integer
+      minimum: 1
+      maximum: 16384
+    VideoKind:
+      type: string
+      enum:
+      - video_landscape
+      - video_portrait
+    Scope:
+      type: string
+      enum:
+      - mine
+      - official
+    SearchQuery:
+      type: string
+      minLength: 0
+      maxLength: 100
+    Columns:
+      type: integer
+      enum:
+      - 1
+      - 2
+      - 3
+      - 4
+    EpisodeStatus:
+      type: string
+      enum:
+      - making
+      - ready
+      - failed
+      - cancelled
+      - deleted
+    JobState:
+      type: string
+      enum:
+      - queued
+      - running
+      - succeeded
+      - failed
+      - cancelling
+      - cancelled
+    QueuedState:
+      type: string
+      const: queued
+    CancellingState:
+      type: string
+      const: cancelling
+    CancelledState:
+      type: string
+      const: cancelled
+    Progress:
+      type: integer
+      minimum: 0
+      maximum: 100
+    RevisionKind:
+      type: string
+      enum:
+      - text
+      - visual
+      - retry
+    URI:
+      type: string
+      format: uri
+    Token:
+      type: string
+      description: 不透明会话 token；仅保存在前端内存，不写 URL/localStorage。
+    Email:
+      type: string
+      format: email
+      description: 仅转发身份服务，不落 Tellkit 日志或 PG。
+    OTP:
+      type: string
+      description: 单次验证码，仅在内存转发；§6 未规定长度或字符集。
+    ChallengeTTL:
+      type: integer
+      maximum: 600
+      description: 有效期秒数，由 IdP 签发，上限 10 分钟。
+    RetryAfter:
+      type: integer
+      description: 再次尝试前等待的秒数。
+    NoStore:
+      type: string
+      const: no-store
+    GateDecision:
+      type: string
+      enum:
+      - guide
+      - refuse
+      - down
+    ReasonCodes:
+      type: array
+      items:
+        $ref: '#/components/schemas/Text'
+      description: 由门禁规则版本决定；§6 未给出封闭枚举。
+    'True':
+      type: boolean
+      const: true
+    Pending:
+      type: string
+      const: pending
+    EmptyRequest:
+      type: object
+      additionalProperties: false
+      required: []
+      properties: {}
+    ErrorCode:
+      type: string
+      enum:
+      - INVALID_ARGUMENT
+      - AUTH_REQUIRED
+      - FORBIDDEN
+      - NOT_FOUND
+      - IDEMPOTENCY_CONFLICT
+      - REQUEST_IN_PROGRESS
+      - QUOTA_EXCEEDED
+      - WORKSPACE_BUSY
+      - ACTIVE_JOB
+      - VERSION_CONFLICT
+      - NOT_READY
+      - MEDIA_EXPIRED
+      - CHALLENGE_EXPIRED
+      - MEDIA_UNAVAILABLE
+      - GATE_GUIDE
+      - GATE_REFUSE
+      - GATE_DOWN
+      - CONTENT_REJECTED
+      - RATE_LIMITED
+      - DEPENDENCY_UNAVAILABLE
+      - INTERNAL
+      - LEASE_LOST
+      - INVALID_SCOPE
+      - ALREADY_COMPLETED
+      - INVALID_CODE
+      - INVALID_CREDENTIALS
+      - ACCOUNT_EXISTS
+      - PASSWORD_INVALID
+      - DECLARATION_REQUIRED
+      - CONTENT_NEEDS_REVIEW
+      - PUBLISH_RATE_LIMITED
+      - CANNOT_REPORT_OWN
+      description: 与 errors.md 完全一致；保留码不代表已有对外 HTTP 映射。
+    ErrorDetail:
+      type: object
+      additionalProperties: false
+      required:
+      - code
+      - message
+      - retryable
+      - request_id
+      properties:
+        code:
+          $ref: '#/components/schemas/ErrorCode'
+        message:
+          $ref: '#/components/schemas/Text'
+        retryable:
+          $ref: '#/components/schemas/Boolean'
+        request_id:
+          $ref: '#/components/schemas/UUID'
+        details:
+          oneOf:
+          - type: object
+            additionalProperties: false
+            required:
+            - quota_limit
+            - quota_used
+            - refund_pending
+            properties:
+              quota_limit:
+                type: integer
+                minimum: 0
+                description: 该工作区累计额度上限，无按月重置。
+              quota_used:
+                type: integer
+                minimum: 0
+                description: 已用额度，含未退还的占用。
+              period:
+                type: string
+                enum: [day]
+              refund_pending:
+                type: integer
+                minimum: 0
+                description: 失败或取消任务尚未退回的额度数量。
+          - type: object
+            additionalProperties: false
+            required:
+            - reason_codes
+            properties:
+              reason_codes:
+                type: array
+                items:
+                  type: string
+    Gate:
+      type: object
+      additionalProperties: false
+      required:
+      - decision
+      - reason_codes
+      properties:
+        decision:
+          $ref: '#/components/schemas/GateDecision'
+        reason_codes:
+          $ref: '#/components/schemas/ReasonCodes'
+    Error:
+      type: object
+      additionalProperties: false
+      required:
+      - error
+      properties:
+        error:
+          $ref: '#/components/schemas/ErrorDetail'
+        gate:
+          $ref: '#/components/schemas/Gate'
+      description: 统一错误；不回显输入原文或供应商堆栈。门禁类错误必须包含 gate。
+      allOf:
+      - $ref: '#/components/schemas/GateRequired'
+      - if:
+          properties:
+            error:
+              properties:
+                code:
+                  const: GATE_GUIDE
+        then:
+          properties:
+            gate:
+              properties:
+                decision:
+                  const: guide
+      - if:
+          properties:
+            error:
+              properties:
+                code:
+                  const: GATE_REFUSE
+        then:
+          properties:
+            gate:
+              properties:
+                decision:
+                  const: refuse
+      - if:
+          properties:
+            error:
+              properties:
+                code:
+                  const: GATE_DOWN
+        then:
+          properties:
+            gate:
+              properties:
+                decision:
+                  const: down
+    GateRequired:
+      if:
+        properties:
+          error:
+            properties:
+              code:
+                enum:
+                - GATE_GUIDE
+                - GATE_REFUSE
+                - GATE_DOWN
+      then:
+        required:
+        - gate
+    SubmitRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - prompt
+      properties:
+        prompt:
+          $ref: '#/components/schemas/Prompt'
+        input_source:
+          type: string
+          enum:
+          - voice
+          - typed
+          - share
+        clarification_attempted:
+          type: boolean
+    ReviseRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - base_version
+      - revision_kind
+      properties:
+        base_version:
+          $ref: '#/components/schemas/Version'
+        revision_kind:
+          $ref: '#/components/schemas/RevisionKind'
+        prompt:
+          $ref: '#/components/schemas/Prompt'
+        input_source:
+          type: string
+          enum:
+          - voice
+          - typed
+          - share
+        clarification_attempted:
+          type: boolean
+      description: text 必须传 prompt；visual/retry 不得传 prompt；三种修改都重新门禁。
+      if:
+        properties:
+          revision_kind:
+            const: text
+      then:
+        required:
+        - prompt
+      else:
+        not:
+          required:
+          - prompt
+    AcceptedJob:
+      type: object
+      additionalProperties: false
+      required:
+      - episode_id
+      - version
+      - job_id
+      - state
+      properties:
+        episode_id:
+          $ref: '#/components/schemas/UUID'
+        version:
+          $ref: '#/components/schemas/Version'
+        job_id:
+          $ref: '#/components/schemas/UUID'
+        state:
+          $ref: '#/components/schemas/QueuedState'
+    TimingMs:
+      type: object
+      additionalProperties: false
+      required:
+      - queue
+      - render
+      - upload
+      - total
+      properties:
+        queue:
+          $ref: '#/components/schemas/Count'
+        render:
+          $ref: '#/components/schemas/Count'
+        upload:
+          $ref: '#/components/schemas/Count'
+        total:
+          $ref: '#/components/schemas/Count'
+      description: 各阶段耗时，单位毫秒。
+    Job:
+      type: object
+      additionalProperties: false
+      required:
+      - job_id
+      - state
+      - stage
+      - progress
+      - attempt
+      - retrying
+      - timing_ms
+      properties:
+        reason_code:
+          type: string
+          description: 唯一失败原因码。
+        failure_kind:
+          type: string
+          enum: [infra, content]
+        reason:
+          type: string
+          description: 生成失败的人话原因，不含内部错误码。
+        job_id:
+          $ref: '#/components/schemas/UUID'
+        state:
+          $ref: '#/components/schemas/JobState'
+        stage:
+          $ref: '#/components/schemas/Text'
+          description: 真实生命周期阶段：queued（等待调度）、claimed（已领取）、finishing（取消收尾或已结束）；终态由
+            state 判断。
+        progress:
+          anyOf:
+          - $ref: '#/components/schemas/Progress'
+          - type: 'null'
+          description: 未成功时为 null；前端主展示 stage，不推算百分比。
+        attempt:
+          $ref: '#/components/schemas/Count'
+        retrying:
+          $ref: '#/components/schemas/Boolean'
+        timing_ms:
+          $ref: '#/components/schemas/TimingMs'
+    EpisodeItem:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - title
+      - status
+      - current_version
+      - latest_version
+      - progress
+      - stage
+      properties:
+        id:
+          $ref: '#/components/schemas/UUID'
+        title:
+          $ref: '#/components/schemas/Text'
+        status:
+          $ref: '#/components/schemas/EpisodeStatus'
+        current_version:
+          $ref: '#/components/schemas/CurrentVersion'
+        latest_version:
+          $ref: '#/components/schemas/LatestVersion'
+        subtitle:
+          $ref: '#/components/schemas/CardSubtitle'
+        duration_seconds:
+          $ref: '#/components/schemas/DurationSeconds'
+        cover_url:
+          $ref: '#/components/schemas/CoverURL'
+        progress:
+          anyOf:
+          - $ref: '#/components/schemas/Progress'
+          - type: 'null'
+          description: 最新在制任务当前尝试实际上报的进度；没有真实进度时明确返回 null，不使用默认值或估算值。
+        stage:
+          enum:
+          - queued
+          - claimed
+          - finishing
+          - null
+          description: 最新任务状态：queued → queued，running → claimed，cancelling → finishing；没有在制任务时明确返回
+            null。
+        visibility:
+          type: string
+          enum:
+          - private
+          - official
+          - published
+          - hidden_pending_review
+        source:
+          type: string
+          enum:
+          - official
+          - community
+        author_display:
+          type:
+          - string
+          - 'null'
+        published_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        review:
+          $ref: '#/components/schemas/EpisodeReview'
+          description: 仅作者可见
+    SearchItem:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - title
+      - progress
+      - stage
+      properties:
+        id:
+          $ref: '#/components/schemas/UUID'
+        title:
+          $ref: '#/components/schemas/Text'
+        subtitle:
+          $ref: '#/components/schemas/CardSubtitle'
+        duration_seconds:
+          $ref: '#/components/schemas/DurationSeconds'
+        cover_url:
+          $ref: '#/components/schemas/CoverURL'
+        progress:
+          anyOf:
+          - $ref: '#/components/schemas/Progress'
+          - type: 'null'
+          description: 最新在制任务当前尝试实际上报的进度；没有真实进度时明确返回 null，不使用默认值或估算值。
+        stage:
+          enum:
+          - queued
+          - claimed
+          - finishing
+          - null
+          description: 最新任务状态：queued → queued，running → claimed，cancelling → finishing；没有在制任务时明确返回
+            null。
+        visibility:
+          type: string
+          enum:
+          - private
+          - official
+          - published
+          - hidden_pending_review
+        source:
+          type: string
+          enum:
+          - official
+          - community
+        author_display:
+          type:
+          - string
+          - 'null'
+        published_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+    ChildEpisodeItem:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - title
+      - current_version
+      - progress
+      - stage
+      properties:
+        id:
+          $ref: '#/components/schemas/UUID'
+        title:
+          $ref: '#/components/schemas/Text'
+        current_version:
+          $ref: '#/components/schemas/Version'
+        duration_seconds:
+          $ref: '#/components/schemas/DurationSeconds'
+        cover_url:
+          $ref: '#/components/schemas/CoverURL'
+        progress:
+          anyOf:
+          - $ref: '#/components/schemas/Progress'
+          - type: 'null'
+          description: 最新在制任务当前尝试实际上报的进度；没有真实进度时明确返回 null，不使用默认值或估算值。
+        stage:
+          enum:
+          - queued
+          - claimed
+          - finishing
+          - null
+          description: 最新任务状态：queued → queued，running → claimed，cancelling → finishing；没有在制任务时明确返回
+            null。
+        visibility:
+          type: string
+          enum:
+          - private
+          - official
+          - published
+          - hidden_pending_review
+        source:
+          type: string
+          enum:
+          - official
+          - community
+        author_display:
+          type:
+          - string
+          - 'null'
+        published_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        review:
+          $ref: '#/components/schemas/EpisodeReview'
+          description: 仅作者可见
+    EpisodeList:
+      type: object
+      additionalProperties: false
+      required:
+      - items
+      - next_cursor
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/EpisodeItem'
+        next_cursor:
+          $ref: '#/components/schemas/NextCursor'
+    SearchResults:
+      type: object
+      additionalProperties: false
+      required:
+      - items
+      - next_cursor
+      properties:
+        empty_reason:
+          type: string
+          description: 空列表原因；空白查询为 empty_query，无匹配为 no_matches。
+          enum: [empty_query, no_matches]
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/SearchItem'
+        next_cursor:
+          $ref: '#/components/schemas/NextCursor'
+    ChildEpisodeList:
+      type: object
+      additionalProperties: false
+      required:
+      - items
+      - next_cursor
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChildEpisodeItem'
+        next_cursor:
+          $ref: '#/components/schemas/NextCursor'
+    SummarySegment:
+      type: object
+      additionalProperties: false
+      required:
+      - title
+      - text
+      properties:
+        title:
+          $ref: '#/components/schemas/Text'
+        text:
+          $ref: '#/components/schemas/Text'
+    EpisodeSummary:
+      type: object
+      additionalProperties: false
+      required:
+      - version
+      - segments
+      properties:
+        version:
+          $ref: '#/components/schemas/Version'
+        segments:
+          type: array
+          items:
+            $ref: '#/components/schemas/SummarySegment'
+    Canon:
+      type: object
+      additionalProperties: false
+      required: [canon_version, title, short_answer, body, statements, misconceptions, audio]
+      properties:
+        knowledge_unverified: {type: boolean, default: false}
+        review: {type: [object, "null"], additionalProperties: true}
+        canon_version: {type: integer, const: 1}
+        title: {type: string, minLength: 1}
+        short_answer: {type: string, minLength: 1}
+        body: {type: string, description: 完整解释适用前提、中间机制、生活类比与常见误解；长度由内容决定}
+        statements:
+          type: array
+          minItems: 3
+          maxItems: 5
+          items:
+            type: object
+            additionalProperties: false
+            required: [id, kind, text]
+            properties:
+              id: {type: string, pattern: '^s[1-5]$'}
+              kind: {type: string, enum: [what, why, how]}
+              text: {type: string, minLength: 8, description: 一句一陈述；默认10–30汉字，调整后容许8–36汉字}
+        misconceptions:
+          type: array
+          minItems: 1
+          items: {type: string, minLength: 1}
+        audio:
+          type: object
+          additionalProperties: false
+          required: [url, duration_ms]
+          properties:
+            url: {type: string, minLength: 1, description: 与视频相同签名机制的播放地址}
+            duration_ms: {type: integer, description: 实测讲解音频时长，仅记录}
+    EpisodeDetail:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - title
+      - status
+      - current_version
+      - latest_version
+      - playable
+      - prompt
+      - summary
+      - canon
+      properties:
+        content:
+          type:
+          - object
+          - 'null'
+          additionalProperties: false
+          required:
+          - duration_ms
+          - subtitles
+          - storyboard
+          - assets
+          properties:
+            duration_ms:
+              type: integer
+              minimum: 15000
+              maximum: 45000
+            subtitle_lines:
+              description: 原句字幕，仅供页面显示；视频继续使用 subtitles。
+              type: [array, 'null']
+              items:
+                type: object
+                additionalProperties: false
+                required: [text, start_ms, end_ms]
+                properties:
+                  text:
+                    type: string
+                  start_ms:
+                    type: number
+                  end_ms:
+                    type: number
+            subtitles:
+              type: array
+              items:
+                type: object
+                additionalProperties: true
+            storyboard:
+              type: object
+              additionalProperties: true
+            assets:
+              type: object
+              additionalProperties:
+                type: string
+            canon_text:
+              type: string
+            segments:
+              type:
+              - array
+              - 'null'
+              items: &id001
+                type: object
+                additionalProperties: false
+                required:
+                - index
+                - text
+                - start_ms
+                - end_ms
+                - scene_id
+                properties:
+                  index:
+                    type: integer
+                    minimum: 0
+                  text:
+                    type: string
+                    minLength: 1
+                  start_ms:
+                    type: integer
+                    minimum: 0
+                  end_ms:
+                    type: integer
+                    minimum: 1
+                  scene_id:
+                    type: integer
+            degradations:
+              type:
+              - array
+              - 'null'
+              items:
+                type: object
+                additionalProperties: true
+        canon_failure:
+          type: object
+          additionalProperties: true
+          required:
+          - reason
+          - failures
+          properties:
+            reason:
+              type: string
+              minLength: 1
+            failures:
+              type: array
+              maxItems: 10
+              items:
+                type: object
+                required:
+                - stage
+                - rule_id
+                - location
+                - expected
+                - actual
+                additionalProperties: true
+        id:
+          $ref: '#/components/schemas/UUID'
+        title:
+          $ref: '#/components/schemas/Text'
+        status:
+          $ref: '#/components/schemas/EpisodeStatus'
+        current_version:
+          $ref: '#/components/schemas/CurrentVersion'
+        latest_version:
+          $ref: '#/components/schemas/LatestVersion'
+        playable:
+          $ref: '#/components/schemas/Boolean'
+        canon:
+          oneOf:
+          - $ref: '#/components/schemas/ContentCanon'
+          - $ref: '#/components/schemas/Canon'
+          - type: 'null'
+        summary:
+          oneOf:
+          - $ref: '#/components/schemas/EpisodeSummary'
+          - type: 'null'
+        job:
+          anyOf:
+          - $ref: '#/components/schemas/Job'
+          - type: 'null'
+          description: 最新版本任务；没有任务或非所属父会话时为 null。
+        visibility:
+          type: string
+          enum:
+          - private
+          - official
+          - published
+          - hidden_pending_review
+        source:
+          type: string
+          enum:
+          - official
+          - community
+        author_display:
+          type:
+          - string
+          - 'null'
+        published_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        review:
+          $ref: '#/components/schemas/EpisodeReview'
+          description: 仅作者可见
+        prompt:
+          type:
+          - string
+          - 'null'
+          description: 所属父会话可读的 latest_version 原始用户输入，逐字保留；历史缺失、非所属或儿童会话为 null。编辑 base_version
+            应使用 latest_version。
+          examples:
+          - 为什么天上会下雨？
+          - null
+      description: summary 始终存在，仅来自当前可播版本真实内容；缺失或历史无效摘要为 null，禁止根据 title 编造。prompt 来自最新版本，供所属父会话跨设备编辑。
+    ContentCanon:
+      type: object
+      additionalProperties: false
+      required:
+      - text
+      - segments
+      - audio_url
+      properties:
+        text:
+          type: string
+          minLength: 1
+        segments:
+          type: array
+          minItems: 1
+          items: *id001
+        audio_url:
+          type: string
+          minLength: 1
+        body:
+          type: string
+        audio:
+          type: object
+          properties:
+            url:
+              type: string
+            duration_ms:
+              type: integer
+              minimum: 15000
+              maximum: 45000
+          additionalProperties: false
+    DeletedEpisode:
+      type: object
+      additionalProperties: false
+      required:
+      - episode_id
+      - deleted
+      - media_purge
+      properties:
+        episode_id:
+          $ref: '#/components/schemas/UUID'
+        deleted:
+          $ref: '#/components/schemas/True'
+        media_purge:
+          $ref: '#/components/schemas/Pending'
+    Playback:
+      type: object
+      additionalProperties: false
+      required:
+      - version
+      - kind
+      - url
+      - expires_at
+      properties:
+        version:
+          $ref: '#/components/schemas/Version'
+        kind:
+          $ref: '#/components/schemas/VideoKind'
+        url:
+          $ref: '#/components/schemas/URI'
+        expires_at:
+          $ref: '#/components/schemas/UTCDateTime'
+      description: 仅一个 url，不能返回数组、第二个 URL 或内部 object_key。
+    CancellingJob:
+      type: object
+      additionalProperties: false
+      required:
+      - job_id
+      - state
+      properties:
+        job_id:
+          $ref: '#/components/schemas/UUID'
+        state:
+          $ref: '#/components/schemas/CancellingState'
+    CancelledJob:
+      type: object
+      additionalProperties: false
+      required:
+      - job_id
+      - state
+      properties:
+        job_id:
+          $ref: '#/components/schemas/UUID'
+        state:
+          $ref: '#/components/schemas/CancelledState'
+    PlazaGroup:
+      type: object
+      additionalProperties: false
+      required:
+      - group_key
+      - items
+      - remaining
+      - next_cursor
+      properties:
+        group_key:
+          $ref: '#/components/schemas/Text'
+        group_label:
+          $ref: '#/components/schemas/Text'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/SearchItem'
+        remaining:
+          $ref: '#/components/schemas/Count'
+        next_cursor:
+          $ref: '#/components/schemas/NextCursor'
+      description: 只返回审核后的 official 资源；首屏每组 2×columns 条（不足则返回余量）。remaining 为剩余条数。items
+        字段形状在 §6 中只有空数组示例，暂复用 id/title，待冻结。
+    PlazaGroups:
+      type: object
+      additionalProperties: false
+      required:
+      - groups
+      properties:
+        groups:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlazaGroup'
+    Session:
+      type: object
+      additionalProperties: false
+      required:
+      - token
+      - expires_at
+      properties:
+        token:
+          $ref: '#/components/schemas/Token'
+        expires_at:
+          $ref: '#/components/schemas/UTCDateTime'
+    EmailChallengeRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - email
+      properties:
+        email:
+          $ref: '#/components/schemas/Email'
+    EmailChallenge:
+      type: object
+      additionalProperties: false
+      required:
+      - challenge_id
+      - expires_in
+      properties:
+        challenge_id:
+          $ref: '#/components/schemas/UUID'
+        expires_in:
+          $ref: '#/components/schemas/ChallengeTTL'
+      description: challenge_id 由 Tellkit 自己的挑战表生成，非第三方 IdP 下发，故固定为 UUID。
+    EmailVerifyRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - challenge_id
+      - code
+      properties:
+        challenge_id:
+          $ref: '#/components/schemas/UUID'
+        code:
+          $ref: '#/components/schemas/OTP'
+    registerPasswordRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - email
+      - code
+      - password
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        code:
+          type: string
+          pattern: ^[0-9]{6}$
+        password:
+          type: string
+    loginPasswordRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - email
+      - password
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        password:
+          type: string
+    forgotPasswordRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - email
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+    resetPasswordRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - email
+      - code
+      - password
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        code:
+          type: string
+          pattern: ^[0-9]{6}$
+        password:
+          type: string
+    changePasswordRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - current_password
+      - new_password
+      properties:
+        current_password:
+          type: string
+        new_password:
+          type: string
+    publishEpisodeRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        anonymous:
+          type: boolean
+        declaration:
+          type: boolean
+      required:
+      - version
+    reportEpisodeRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        reason:
+          type: string
+          enum:
+          - unsafe_for_children
+          - wrong_content
+          - scary
+          - other
+      required:
+      - reason
+    PublishEpisodeResponse:
+      type: object
+      additionalProperties: false
+      required:
+      - visibility
+      - published_at
+      - source
+      properties:
+        visibility:
+          const: published
+        published_at:
+          type: string
+          format: date-time
+        source:
+          const: community
+    UnpublishEpisodeResponse:
+      type: object
+      additionalProperties: false
+      required:
+      - visibility
+      properties:
+        visibility:
+          const: private
+    EpisodeReview:
+      type: object
+      additionalProperties: false
+      required:
+      - state
+      properties:
+        state:
+          type: string
+          enum:
+          - none
+          - pending
+          - rejected
+        note:
+          type: string
+        message:
+          type: string
+          description: pending：正在复核，暂时不在广场显示；rejected：这一集没有通过复核，可以修改后重新发布
+    InputOutcome:
+      type: object
+      required:
+      - state
+      - kind
+      - reason
+      - reason_tag
+      properties:
+        state:
+          type: string
+          enum:
+          - input_rejected
+          - input_unclear
+        kind:
+          type: string
+          enum:
+          - unclear
+          - not_for_video
+        reason:
+          type: string
+        reason_tag:
+          type: string
+          enum:
+          - ''
+          - not_knowledge
+          - unverifiable
+          - unsuitable
+          - too_broad
+          - unrenderable
+        options:
+          type: array
+          items:
+            type: string
+        action:
+          type: string
+          enum:
+          - edit
+  responses:
+    Error400InvalidArgument:
+      description: INVALID_ARGUMENT
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            INVALID_ARGUMENT:
+              value:
+                error:
+                  code: INVALID_ARGUMENT
+                  message: 请求参数不合法
+                  retryable: false
+                  request_id: e83cc075-f3b0-45de-981a-477f34b7a884
+    Error401AuthRequired:
+      description: AUTH_REQUIRED
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            AUTH_REQUIRED:
+              value:
+                error:
+                  code: AUTH_REQUIRED
+                  message: 缺少有效鉴权
+                  retryable: false
+                  request_id: e83cc075-f3b0-45de-981a-477f34b7a884
+    Error403Forbidden:
+      description: FORBIDDEN
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            FORBIDDEN:
+              value:
+                error:
+                  code: FORBIDDEN
+                  message: 当前会话无权执行此操作
+                  retryable: false
+                  request_id: e83cc075-f3b0-45de-981a-477f34b7a884
+    Error404NotFound:
+      description: NOT_FOUND
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            NOT_FOUND:
+              value:
+                error:
+                  code: NOT_FOUND
+                  message: 资源不存在；越租户也返回此码
+                  retryable: false
+                  request_id: e83cc075-f3b0-45de-981a-477f34b7a884
+    Error429RateLimited:
+      description: RATE_LIMITED
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            RATE_LIMITED:
+              value:
+                error:
+                  code: RATE_LIMITED
+                  message: 触发频控
+                  retryable: true
+                  request_id: e83cc075-f3b0-45de-981a-477f34b7a884
+    Error503DependencyUnavailableGateDown:
+      description: DEPENDENCY_UNAVAILABLE, GATE_DOWN
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            DEPENDENCY_UNAVAILABLE:
+              value:
+                error:
+                  code: DEPENDENCY_UNAVAILABLE
+                  message: 依赖不可用
+                  retryable: true
+                  request_id: e83cc075-f3b0-45de-981a-477f34b7a884
+            GATE_DOWN:
+              value:
+                error:
+                  code: GATE_DOWN
+                  message: 门禁不可用；附 gate.decision=down
+                  retryable: true
+                  request_id: e83cc075-f3b0-45de-981a-477f34b7a884
+                gate:
+                  decision: down
+                  reason_codes: []
+    Error409IdempotencyConflictRequestInProgress:
+      description: IDEMPOTENCY_CONFLICT, REQUEST_IN_PROGRESS
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            IDEMPOTENCY_CONFLICT:
+              value:
+                error:
+                  code: IDEMPOTENCY_CONFLICT
+                  message: 同幂等键对应不同规范化请求
+                  retryable: false
+                  request_id: e83cc075-f3b0-45de-981a-477f34b7a884
+            REQUEST_IN_PROGRESS:
+              value:
+                error:
+                  code: REQUEST_IN_PROGRESS
+                  message: 同键请求处理中；返回 Retry-After
+                  retryable: true
+                  request_id: e83cc075-f3b0-45de-981a-477f34b7a884
+      headers:
+        Retry-After:
+          description: REQUEST_IN_PROGRESS 时必须返回，单位秒；processing 锁设计值 60s。
+          schema:
+            $ref: '#/components/schemas/RetryAfter'
+          example: 1
+    Error402QuotaExceeded:
+      description: QUOTA_EXCEEDED
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            QUOTA_EXCEEDED:
+              value:
+                error:
+                  code: QUOTA_EXCEEDED
+                  message: 额度不足
+                  retryable: false
+                  request_id: e83cc075-f3b0-45de-981a-477f34b7a884
+    Error422GateGuideGateRefuse:
+      description: GATE_GUIDE, GATE_REFUSE
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            GATE_GUIDE:
+              value:
+                error:
+                  code: GATE_GUIDE
+                  message: 门禁引导；附 gate.decision=guide
+                  retryable: false
+                  request_id: e83cc075-f3b0-45de-981a-477f34b7a884
+                gate:
+                  decision: guide
+                  reason_codes:
+                  - NEEDS_CONTEXT
+            GATE_REFUSE:
+              value:
+                error:
+                  code: GATE_REFUSE
+                  message: 门禁拒绝；附 gate.decision=refuse
+                  retryable: false
+                  request_id: e83cc075-f3b0-45de-981a-477f34b7a884
+                gate:
+                  decision: refuse
+                  reason_codes: []
+    Error503DependencyUnavailable:
+      description: DEPENDENCY_UNAVAILABLE
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            DEPENDENCY_UNAVAILABLE:
+              value:
+                error:
+                  code: DEPENDENCY_UNAVAILABLE
+                  message: 依赖不可用
+                  retryable: true
+                  request_id: e83cc075-f3b0-45de-981a-477f34b7a884
+    Error409IdempotencyConflictRequestInProgressActiveJobVersionConflict:
+      description: IDEMPOTENCY_CONFLICT, REQUEST_IN_PROGRESS, ACTIVE_JOB, VERSION_CONFLICT
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            IDEMPOTENCY_CONFLICT:
+              value:
+                error:
+                  code: IDEMPOTENCY_CONFLICT
+                  message: 同幂等键对应不同规范化请求
+                  retryable: false
+                  request_id: e83cc075-f3b0-45de-981a-477f34b7a884
+            REQUEST_IN_PROGRESS:
+              value:
+                error:
+                  code: REQUEST_IN_PROGRESS
+                  message: 同键请求处理中；返回 Retry-After
+                  retryable: true
+                  request_id: e83cc075-f3b0-45de-981a-477f34b7a884
+            ACTIVE_JOB:
+              value:
+                error:
+                  code: ACTIVE_JOB
+                  message: 当前集存在活动任务
+                  retryable: false
+                  request_id: e83cc075-f3b0-45de-981a-477f34b7a884
+            VERSION_CONFLICT:
+              value:
+                error:
+                  code: VERSION_CONFLICT
+                  message: 修改所依据的版本冲突
+                  retryable: false
+                  request_id: e83cc075-f3b0-45de-981a-477f34b7a884
+      headers:
+        Retry-After:
+          description: REQUEST_IN_PROGRESS 时必须返回，单位秒；processing 锁设计值 60s。
+          schema:
+            $ref: '#/components/schemas/RetryAfter'
+          example: 1
+    Error400InvalidArgumentInvalidScope:
+      description: INVALID_ARGUMENT, INVALID_SCOPE
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            INVALID_ARGUMENT:
+              value:
+                error:
+                  code: INVALID_ARGUMENT
+                  message: 请求参数不合法
+                  retryable: false
+                  request_id: e83cc075-f3b0-45de-981a-477f34b7a884
+            INVALID_SCOPE:
+              value:
+                error:
+                  code: INVALID_SCOPE
+                  message: 搜索 scope 不合法
+                  retryable: false
+                  request_id: e83cc075-f3b0-45de-981a-477f34b7a884
+    Error503DependencyUnavailableMediaUnavailable:
+      description: DEPENDENCY_UNAVAILABLE, MEDIA_UNAVAILABLE
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            DEPENDENCY_UNAVAILABLE:
+              value:
+                error:
+                  code: DEPENDENCY_UNAVAILABLE
+                  message: 依赖不可用
+                  retryable: true
+                  request_id: e83cc075-f3b0-45de-981a-477f34b7a884
+            MEDIA_UNAVAILABLE:
+              value:
+                error:
+                  code: MEDIA_UNAVAILABLE
+                  message: 媒体因其他故障不可用
+                  retryable: true
+                  request_id: e83cc075-f3b0-45de-981a-477f34b7a884
+    Error409NotReady:
+      description: NOT_READY
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            NOT_READY:
+              value:
+                error:
+                  code: NOT_READY
+                  message: 指定播放版本未发布
+                  retryable: false
+                  request_id: e83cc075-f3b0-45de-981a-477f34b7a884
+    Error410ChallengeExpired:
+      description: CHALLENGE_EXPIRED（验证码或挑战已过期，需重新发送）
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            CHALLENGE_EXPIRED:
+              value:
+                error:
+                  code: CHALLENGE_EXPIRED
+                  message: 验证码已过期，请重新获取
+                  retryable: false
+                  request_id: e83cc075-f3b0-45de-981a-477f34b7a884
+    Error410MediaExpired:
+      description: MEDIA_EXPIRED
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            MEDIA_EXPIRED:
+              value:
+                error:
+                  code: MEDIA_EXPIRED
+                  message: 媒体已清理
+                  retryable: false
+                  request_id: e83cc075-f3b0-45de-981a-477f34b7a884
+    Error409IdempotencyConflictRequestInProgressAlreadyCompleted:
+      description: IDEMPOTENCY_CONFLICT, REQUEST_IN_PROGRESS, ALREADY_COMPLETED
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            IDEMPOTENCY_CONFLICT:
+              value:
+                error:
+                  code: IDEMPOTENCY_CONFLICT
+                  message: 同幂等键对应不同规范化请求
+                  retryable: false
+                  request_id: e83cc075-f3b0-45de-981a-477f34b7a884
+            REQUEST_IN_PROGRESS:
+              value:
+                error:
+                  code: REQUEST_IN_PROGRESS
+                  message: 同键请求处理中；返回 Retry-After
+                  retryable: true
+                  request_id: e83cc075-f3b0-45de-981a-477f34b7a884
+            ALREADY_COMPLETED:
+              value:
+                error:
+                  code: ALREADY_COMPLETED
+                  message: 任务已完成，不能取消
+                  retryable: false
+                  request_id: e83cc075-f3b0-45de-981a-477f34b7a884
+      headers:
+        Retry-After:
+          description: REQUEST_IN_PROGRESS 时必须返回，单位秒；processing 锁设计值 60s。
+          schema:
+            $ref: '#/components/schemas/RetryAfter'
+          example: 1
+    Error401AuthRequiredInvalidCode:
+      description: AUTH_REQUIRED, INVALID_CODE
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            AUTH_REQUIRED:
+              value:
+                error:
+                  code: AUTH_REQUIRED
+                  message: 缺少有效鉴权
+                  retryable: false
+                  request_id: e83cc075-f3b0-45de-981a-477f34b7a884
+            INVALID_CODE:
+              value:
+                error:
+                  code: INVALID_CODE
+                  message: 验证码无效
+                  retryable: false
+                  request_id: e83cc075-f3b0-45de-981a-477f34b7a884

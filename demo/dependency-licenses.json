@@ -1,0 +1,56 @@
+[
+  {
+    "License": "MIT",
+    "Name": "annotated-types",
+    "URL": "https://github.com/annotated-types/annotated-types",
+    "Version": "0.8.0"
+  },
+  {
+    "License": "MIT",
+    "Name": "fonttools",
+    "URL": "http://github.com/fonttools/fonttools",
+    "Version": "4.60.2"
+  },
+  {
+    "License": "MIT License",
+    "Name": "jieba",
+    "URL": "https://github.com/fxsjy/jieba",
+    "Version": "0.42.1"
+  },
+  {
+    "License": "BSD License",
+    "Name": "numpy",
+    "URL": "https://numpy.org",
+    "Version": "2.2.6"
+  },
+  {
+    "License": "MIT-CMU",
+    "Name": "pillow",
+    "URL": "https://python-pillow.github.io",
+    "Version": "12.0.0"
+  },
+  {
+    "License": "MIT",
+    "Name": "pydantic",
+    "URL": "https://github.com/pydantic/pydantic",
+    "Version": "2.12.5"
+  },
+  {
+    "License": "MIT",
+    "Name": "pydantic_core",
+    "URL": "https://github.com/pydantic/pydantic-core",
+    "Version": "2.41.5"
+  },
+  {
+    "License": "MIT",
+    "Name": "typing-inspection",
+    "URL": "https://github.com/pydantic/typing-inspection",
+    "Version": "0.4.5"
+  },
+  {
+    "License": "PSF-2.0",
+    "Name": "typing_extensions",
+    "URL": "https://github.com/python/typing_extensions",
+    "Version": "4.16.0"
+  }
+]

@@ -1,0 +1,1832 @@
+{
+  "$defs": {
+    "ActionIntent": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "else": {
+            "properties": {
+              "target_id": {
+                "type": "null"
+              }
+            }
+          },
+          "if": {
+            "properties": {
+              "action": {
+                "enum": [
+                  "move_to",
+                  "pour",
+                  "sink",
+                  "merge",
+                  "dissolve"
+                ]
+              }
+            },
+            "required": [
+              "action"
+            ]
+          },
+          "then": {
+            "properties": {
+              "target_id": {
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "target_id"
+            ]
+          }
+        },
+        {
+          "else": {
+            "properties": {
+              "count": {
+                "type": "null"
+              }
+            }
+          },
+          "if": {
+            "properties": {
+              "action": {
+                "const": "split"
+              }
+            },
+            "required": [
+              "action"
+            ]
+          },
+          "then": {
+            "properties": {
+              "count": {
+                "enum": [
+                  2
+                ]
+              }
+            },
+            "required": [
+              "count"
+            ]
+          }
+        }
+      ],
+      "properties": {
+        "action": {
+          "enum": [
+            "move_to",
+            "split",
+            "merge",
+            "sink",
+            "pour",
+            "dissolve",
+            "appear",
+            "disappear",
+            "highlight",
+            "scale"
+          ],
+          "title": "Action",
+          "type": "string"
+        },
+        "subject_id": {
+          "minLength": 1,
+          "title": "Subject Id",
+          "type": "string"
+        },
+        "target_id": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target Id"
+        },
+        "count": {
+          "anyOf": [
+            {
+              "const": 2,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Count"
+        },
+        "direction": {
+          "anyOf": [
+            {
+              "enum": [
+                "horizontal",
+                "vertical"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Direction"
+        },
+        "start_opacity": {
+          "anyOf": [
+            {
+              "const": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Start Opacity"
+        },
+        "end_opacity": {
+          "anyOf": [
+            {
+              "const": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "End Opacity"
+        }
+      },
+      "required": [
+        "action",
+        "subject_id"
+      ],
+      "title": "ActionIntent",
+      "type": "object"
+    },
+    "Background": {
+      "additionalProperties": false,
+      "properties": {
+        "horizon": {
+          "title": "Horizon",
+          "type": "boolean"
+        },
+        "rear": {
+          "enum": [
+            "wall",
+            "tree",
+            "shelf",
+            "window"
+          ],
+          "title": "Rear",
+          "type": "string"
+        },
+        "support": {
+          "enum": [
+            "table",
+            "ground",
+            "platform"
+          ],
+          "title": "Support",
+          "type": "string"
+        },
+        "light": {
+          "enum": [
+            "upper_left",
+            "upper_right"
+          ],
+          "title": "Light",
+          "type": "string"
+        },
+        "contact_shadows": {
+          "title": "Contact Shadows",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "horizon",
+        "rear",
+        "support",
+        "light",
+        "contact_shadows"
+      ],
+      "title": "Background",
+      "type": "object"
+    },
+    "BeatState": {
+      "additionalProperties": false,
+      "properties": {
+        "color": {
+          "anyOf": [
+            {
+              "enum": [
+                "red",
+                "orange",
+                "yellow",
+                "green",
+                "blue",
+                "indigo",
+                "violet",
+                "brown",
+                "gray",
+                "white"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Color"
+        },
+        "visible": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Visible"
+        }
+      },
+      "title": "BeatState",
+      "type": "object"
+    },
+    "CameraMotion": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "enum": [
+            "push-in",
+            "pull-back"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "anchor": {
+          "minLength": 1,
+          "title": "Anchor",
+          "type": "string"
+        },
+        "scene": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Scene"
+        },
+        "from": {
+          "default": 1.0,
+          "title": "From",
+          "type": "number"
+        },
+        "to": {
+          "default": 1.2,
+          "title": "To",
+          "type": "number"
+        },
+        "start_ms": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Start Ms",
+          "type": "integer"
+        },
+        "duration_ms": {
+          "default": 600,
+          "maximum": 800,
+          "minimum": 400,
+          "title": "Duration Ms",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "type",
+        "anchor"
+      ],
+      "title": "CameraMotion",
+      "type": "object"
+    },
+    "Handoff": {
+      "additionalProperties": false,
+      "properties": {
+        "from": {
+          "minLength": 1,
+          "title": "From",
+          "type": "string"
+        },
+        "to": {
+          "minLength": 1,
+          "title": "To",
+          "type": "string"
+        },
+        "action": {
+          "enum": [
+            "pan",
+            "transform"
+          ],
+          "title": "Action",
+          "type": "string"
+        }
+      },
+      "required": [
+        "from",
+        "to",
+        "action"
+      ],
+      "title": "Handoff",
+      "type": "object"
+    },
+    "PoseEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "item": {
+          "minLength": 1,
+          "title": "Item",
+          "type": "string"
+        },
+        "pose": {
+          "enum": [
+            "idle",
+            "look_at",
+            "point",
+            "wonder",
+            "nod",
+            "walk_in"
+          ],
+          "title": "Pose",
+          "type": "string"
+        },
+        "duration_ms": {
+          "default": 1200,
+          "minimum": 600,
+          "title": "Duration Ms",
+          "type": "integer"
+        },
+        "transition_ms": {
+          "default": 250,
+          "maximum": 300,
+          "minimum": 200,
+          "title": "Transition Ms",
+          "type": "integer"
+        },
+        "target": {
+          "minLength": 1,
+          "title": "Target",
+          "type": "string"
+        },
+        "trigger": {
+          "$ref": "#/$defs/Trigger"
+        }
+      },
+      "required": [
+        "item",
+        "pose",
+        "target",
+        "trigger"
+      ],
+      "title": "PoseEvent",
+      "type": "object"
+    },
+    "Sample": {
+      "additionalProperties": false,
+      "properties": {
+        "at": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "At",
+          "type": "number"
+        },
+        "position": {
+          "maximum": 8,
+          "minimum": 0,
+          "title": "Position",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "at",
+        "position"
+      ],
+      "title": "Sample",
+      "type": "object"
+    },
+    "Scene": {
+      "additionalProperties": false,
+      "properties": {
+        "subject": {
+          "default": null,
+          "items": {
+            "properties": {
+              "representation": {
+                "enum": [
+                  "entity",
+                  "propagation"
+                ],
+                "type": "string"
+              },
+              "name": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "ref": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "identity": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "teaching_role": {
+                "enum": [
+                  "subject",
+                  "tool",
+                  "result"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "ref",
+              "identity",
+              "teaching_role"
+            ],
+            "type": "object"
+          },
+          "minItems": 1,
+          "title": "Subject",
+          "type": "array"
+        },
+        "phenomenon": {
+          "default": null,
+          "properties": {
+            "kind": {
+              "type": "string"
+            },
+            "render": {
+              "type": "object"
+            }
+          },
+          "title": "Phenomenon",
+          "type": "object"
+        },
+        "relation": {
+          "default": null,
+          "items": {
+            "properties": {
+              "type": {
+                "enum": [
+                  "attached_to",
+                  "rests_on",
+                  "casts_on",
+                  "inside",
+                  "blocks",
+                  "comes_from",
+                  "goes_to"
+                ],
+                "type": "string"
+              },
+              "from": {
+                "type": "string"
+              },
+              "to": {
+                "type": "string"
+              },
+              "start": {
+                "type": "number"
+              },
+              "end": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "type",
+              "from",
+              "to"
+            ],
+            "type": "object"
+          },
+          "title": "Relation",
+          "type": "array"
+        },
+        "statement_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Statement Id"
+        },
+        "answers": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Answers",
+          "type": "array"
+        },
+        "role": {
+          "anyOf": [
+            {
+              "enum": [
+                "what",
+                "why",
+                "how"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Role"
+        },
+        "index": {
+          "title": "Index",
+          "type": "integer"
+        },
+        "narration": {
+          "minLength": 1,
+          "title": "Narration",
+          "type": "string"
+        },
+        "on_screen_text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "On Screen Text"
+        },
+        "duration_ms": {
+          "exclusiveMinimum": 0,
+          "title": "Duration Ms",
+          "type": "integer"
+        },
+        "on_screen_text_start_ms": {
+          "default": 0,
+          "minimum": 0,
+          "title": "On Screen Text Start Ms",
+          "type": "integer"
+        },
+        "visual": {
+          "$ref": "#/$defs/Visual"
+        }
+      },
+      "required": [
+        "index",
+        "narration",
+        "on_screen_text",
+        "duration_ms",
+        "visual"
+      ],
+      "title": "Scene",
+      "type": "object"
+    },
+    "SentenceBeat": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "change": {
+                "const": "move_to"
+              }
+            },
+            "required": [
+              "change"
+            ]
+          },
+          "then": {
+            "properties": {
+              "target_id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "into_id": {
+                "type": "null"
+              },
+              "with_id": {
+                "type": "null"
+              },
+              "n": {
+                "type": "null"
+              }
+            },
+            "required": [
+              "target_id"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "change": {
+                "const": "split"
+              }
+            },
+            "required": [
+              "change"
+            ]
+          },
+          "then": {
+            "properties": {
+              "target_id": {
+                "type": "null"
+              },
+              "into_id": {
+                "type": "null"
+              },
+              "with_id": {
+                "type": "null"
+              },
+              "n": {
+                "enum": [
+                  2
+                ]
+              }
+            },
+            "required": [
+              "n"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "change": {
+                "const": "merge"
+              }
+            },
+            "required": [
+              "change"
+            ]
+          },
+          "then": {
+            "properties": {
+              "target_id": {
+                "type": "null"
+              },
+              "into_id": {
+                "type": "null"
+              },
+              "with_id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "n": {
+                "type": "null"
+              }
+            },
+            "required": [
+              "with_id"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "change": {
+                "const": "sink"
+              }
+            },
+            "required": [
+              "change"
+            ]
+          },
+          "then": {
+            "properties": {
+              "target_id": {
+                "type": "null"
+              },
+              "into_id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "with_id": {
+                "type": "null"
+              },
+              "n": {
+                "type": "null"
+              }
+            },
+            "required": [
+              "into_id"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "change": {
+                "const": "pour"
+              }
+            },
+            "required": [
+              "change"
+            ]
+          },
+          "then": {
+            "properties": {
+              "target_id": {
+                "type": "null"
+              },
+              "into_id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "with_id": {
+                "type": "null"
+              },
+              "n": {
+                "type": "null"
+              }
+            },
+            "required": [
+              "into_id"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "change": {
+                "const": "dissolve"
+              }
+            },
+            "required": [
+              "change"
+            ]
+          },
+          "then": {
+            "properties": {
+              "target_id": {
+                "type": "null"
+              },
+              "into_id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "with_id": {
+                "type": "null"
+              },
+              "n": {
+                "type": "null"
+              }
+            },
+            "required": [
+              "into_id"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "change": {
+                "const": "appear"
+              }
+            },
+            "required": [
+              "change"
+            ]
+          },
+          "then": {
+            "properties": {
+              "target_id": {
+                "type": "null"
+              },
+              "into_id": {
+                "type": "null"
+              },
+              "with_id": {
+                "type": "null"
+              },
+              "n": {
+                "type": "null"
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "change": {
+                "const": "disappear"
+              }
+            },
+            "required": [
+              "change"
+            ]
+          },
+          "then": {
+            "properties": {
+              "target_id": {
+                "type": "null"
+              },
+              "into_id": {
+                "type": "null"
+              },
+              "with_id": {
+                "type": "null"
+              },
+              "n": {
+                "type": "null"
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "change": {
+                "const": "highlight"
+              }
+            },
+            "required": [
+              "change"
+            ]
+          },
+          "then": {
+            "properties": {
+              "target_id": {
+                "type": "null"
+              },
+              "into_id": {
+                "type": "null"
+              },
+              "with_id": {
+                "type": "null"
+              },
+              "n": {
+                "type": "null"
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "change": {
+                "const": "scale"
+              }
+            },
+            "required": [
+              "change"
+            ]
+          },
+          "then": {
+            "properties": {
+              "target_id": {
+                "type": "null"
+              },
+              "into_id": {
+                "type": "null"
+              },
+              "with_id": {
+                "type": "null"
+              },
+              "n": {
+                "type": "null"
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "change": {
+                "const": null
+              }
+            },
+            "required": [
+              "change"
+            ]
+          },
+          "then": {
+            "properties": {
+              "target_id": {
+                "type": "null"
+              },
+              "into_id": {
+                "type": "null"
+              },
+              "with_id": {
+                "type": "null"
+              },
+              "n": {
+                "type": "null"
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "else": {
+            "properties": {
+              "before": {
+                "$ref": "#/$defs/BeatState"
+              },
+              "after": {
+                "$ref": "#/$defs/BeatState"
+              }
+            }
+          },
+          "if": {
+            "properties": {
+              "animation": {
+                "type": "object"
+              }
+            },
+            "required": [
+              "animation"
+            ]
+          },
+          "then": {
+            "properties": {
+              "before": false,
+              "after": false
+            }
+          }
+        }
+      ],
+      "properties": {
+        "allow_overlap": {
+          "default": false,
+          "title": "Allow Overlap",
+          "type": "boolean"
+        },
+        "speech_window": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SpeechWindow"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "at": {
+          "anyOf": [
+            {
+              "exclusiveMaximum": 1,
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "At"
+        },
+        "sentence": {
+          "minimum": 1,
+          "title": "Sentence",
+          "type": "integer"
+        },
+        "change": {
+          "anyOf": [
+            {
+              "enum": [
+                "move_to",
+                "split",
+                "merge",
+                "sink",
+                "pour",
+                "dissolve",
+                "appear",
+                "disappear",
+                "highlight",
+                "scale"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Change"
+        },
+        "target_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target Id"
+        },
+        "into_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Into Id"
+        },
+        "with_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "With Id"
+        },
+        "n": {
+          "anyOf": [
+            {
+              "const": 2,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "N"
+        },
+        "object": {
+          "minimum": 0,
+          "title": "Object",
+          "type": "integer"
+        },
+        "animation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActionIntent"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "animation_source": {
+          "anyOf": [
+            {
+              "enum": [
+                "model",
+                "code",
+                "failed"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Animation Source"
+        },
+        "animation_error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Animation Error"
+        },
+        "before": {},
+        "after": {}
+      },
+      "required": [
+        "sentence",
+        "change",
+        "object"
+      ],
+      "title": "SentenceBeat",
+      "type": "object"
+    },
+    "SpeechWindow": {
+      "additionalProperties": false,
+      "properties": {
+        "start_ms": {
+          "minimum": 0,
+          "title": "Start Ms",
+          "type": "number"
+        },
+        "end_ms": {
+          "minimum": 0,
+          "title": "End Ms",
+          "type": "number"
+        }
+      },
+      "required": [
+        "start_ms",
+        "end_ms"
+      ],
+      "title": "SpeechWindow",
+      "type": "object"
+    },
+    "Trigger": {
+      "additionalProperties": false,
+      "properties": {
+        "object": {
+          "minLength": 1,
+          "title": "Object",
+          "type": "string"
+        },
+        "event": {
+          "enum": [
+            "appear",
+            "change",
+            "move",
+            "disappear",
+            "speak"
+          ],
+          "title": "Event",
+          "type": "string"
+        },
+        "at_ms": {
+          "minimum": 0,
+          "title": "At Ms",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "object",
+        "event",
+        "at_ms"
+      ],
+      "title": "Trigger",
+      "type": "object"
+    },
+    "Visual": {
+      "additionalProperties": false,
+      "properties": {
+        "ending_hold_ms": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Ending Hold Ms",
+          "type": "integer"
+        },
+        "beats": {
+          "items": {
+            "$ref": "#/$defs/SentenceBeat"
+          },
+          "title": "Beats",
+          "type": "array"
+        },
+        "camera_motion": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CameraMotion"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "poses": {
+          "items": {
+            "$ref": "#/$defs/PoseEvent"
+          },
+          "maxItems": 0,
+          "title": "Poses",
+          "type": "array"
+        },
+        "handoff": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Handoff"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "spatial_frame": {
+          "anyOf": [
+            {
+              "enum": [
+                "tank",
+                "table",
+                "ground",
+                "display"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Spatial Frame"
+        },
+        "background": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Background"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "layout": {
+          "enum": [
+            "single",
+            "compare",
+            "sequence",
+            "stack",
+            "ladder",
+            "zoom",
+            "narration"
+          ],
+          "title": "Layout",
+          "type": "string"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/VisualItem"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "relation": {
+          "enum": [
+            "none",
+            "cause",
+            "flow",
+            "arrow",
+            "equals",
+            "count",
+            "merge",
+            "split"
+          ],
+          "title": "Relation",
+          "type": "string"
+        },
+        "motion": {
+          "enum": [
+            "appear",
+            "rise",
+            "count",
+            "draw",
+            "move_right",
+            "merge",
+            "glow"
+          ],
+          "title": "Motion",
+          "type": "string"
+        }
+      },
+      "required": [
+        "layout",
+        "items",
+        "relation",
+        "motion"
+      ],
+      "title": "Visual",
+      "type": "object"
+    },
+    "VisualItem": {
+      "additionalProperties": false,
+      "properties": {
+        "shape": {
+          "enum": [
+            "ape_bent",
+            "ape_upright",
+            "apple",
+            "arrow",
+            "bacteria",
+            "block",
+            "boat",
+            "book",
+            "bowl",
+            "brain",
+            "campfire",
+            "candy",
+            "car",
+            "card",
+            "channel",
+            "charge",
+            "check",
+            "child",
+            "circle",
+            "cloud",
+            "cold",
+            "cookie",
+            "cookie_half",
+            "cookie_large",
+            "cookie_small",
+            "cookie_whole",
+            "cross",
+            "cup",
+            "curved_arrow",
+            "diagram_box",
+            "drop",
+            "drum",
+            "ear",
+            "ear_section",
+            "earth",
+            "foot_left",
+            "foot_right",
+            "force",
+            "grass",
+            "graupel",
+            "ground",
+            "heart",
+            "heat",
+            "house",
+            "human_bent",
+            "human_standing",
+            "ice",
+            "ice_block",
+            "ice_melting",
+            "jar",
+            "knife",
+            "lightning",
+            "many",
+            "memory_card",
+            "moon",
+            "mountain",
+            "question",
+            "rain",
+            "rain_basin",
+            "rainbow",
+            "river",
+            "rotation_axis",
+            "rotation_globe",
+            "route_long",
+            "route_short",
+            "shoe",
+            "shoe_left",
+            "shoe_right",
+            "silhouette_leaning",
+            "silhouette_quadruped",
+            "silhouette_upright",
+            "silhouette_upright_tool",
+            "sleeping_child",
+            "sound",
+            "spear",
+            "square",
+            "star",
+            "stick",
+            "stone",
+            "stone_axe",
+            "sugar_grains",
+            "sugar_solution",
+            "sun",
+            "sun_ray",
+            "tank",
+            "tank_stone",
+            "tank_wood",
+            "time",
+            "timeline",
+            "timeline_axis",
+            "tooth",
+            "toothbrush",
+            "tree",
+            "triangle",
+            "vapor_particles",
+            "vibration",
+            "water",
+            "water_cup_tall",
+            "water_cup_wide",
+            "water_drop",
+            "wind",
+            "wood"
+          ],
+          "title": "Shape",
+          "type": "string"
+        },
+        "color": {
+          "enum": [
+            "red",
+            "orange",
+            "yellow",
+            "green",
+            "blue",
+            "indigo",
+            "violet",
+            "brown",
+            "gray",
+            "white"
+          ],
+          "title": "Color",
+          "type": "string"
+        },
+        "count": {
+          "maximum": 8,
+          "minimum": 1,
+          "title": "Count",
+          "type": "integer"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "subject",
+            "tool",
+            "result",
+            "decoration"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "id": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Id"
+        },
+        "parent": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Parent"
+        },
+        "subject_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Subject Id"
+        },
+        "comparison": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Comparison"
+        },
+        "from": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "From"
+        },
+        "to": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "To"
+        },
+        "causal_role": {
+          "anyOf": [
+            {
+              "enum": [
+                "source",
+                "target"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Causal Role"
+        },
+        "action": {
+          "anyOf": [
+            {
+              "const": "fall",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Action"
+        },
+        "samples": {
+          "items": {
+            "$ref": "#/$defs/Sample"
+          },
+          "title": "Samples",
+          "type": "array"
+        },
+        "position": {
+          "anyOf": [
+            {
+              "maximum": 8,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Position"
+        },
+        "repair_bboxes": {
+          "additionalProperties": {
+            "items": {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "maxItems": 4,
+            "minItems": 4,
+            "type": "array"
+          },
+          "propertyNames": {
+            "enum": [
+              "16x9",
+              "9x16"
+            ]
+          },
+          "title": "Repair Bboxes",
+          "type": "object"
+        },
+        "target_regions": {
+          "additionalProperties": {
+            "items": {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "maxItems": 4,
+            "minItems": 4,
+            "type": "array"
+          },
+          "propertyNames": {
+            "enum": [
+              "16x9",
+              "9x16"
+            ]
+          },
+          "title": "Target Regions",
+          "type": "object"
+        },
+        "placement": {
+          "additionalProperties": {
+            "items": {
+              "maximum": 1,
+              "minimum": -1,
+              "type": "number"
+            },
+            "maxItems": 2,
+            "minItems": 2,
+            "type": "array"
+          },
+          "propertyNames": {
+            "enum": [
+              "16x9",
+              "9x16"
+            ]
+          },
+          "title": "Placement",
+          "type": "object"
+        },
+        "visible": {
+          "default": true,
+          "title": "Visible",
+          "type": "boolean"
+        },
+        "size_class": {
+          "anyOf": [
+            {
+              "enum": [
+                "micro",
+                "small",
+                "medium",
+                "large",
+                "vast"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Size Class"
+        },
+        "scale": {
+          "default": "normal",
+          "enum": [
+            "small",
+            "normal",
+            "large"
+          ],
+          "title": "Scale",
+          "type": "string"
+        },
+        "phase": {
+          "anyOf": [
+            {
+              "enum": [
+                "surface",
+                "sinking",
+                "bottom"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Phase"
+        },
+        "polarity": {
+          "default": "-",
+          "enum": [
+            "+",
+            "-"
+          ],
+          "title": "Polarity",
+          "type": "string"
+        },
+        "mood": {
+          "anyOf": [
+            {
+              "enum": [
+                "happy",
+                "worried",
+                "sad",
+                "scared"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mood"
+        },
+        "state": {
+          "anyOf": [
+            {
+              "const": "decayed",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "State"
+        }
+      },
+      "required": [
+        "shape",
+        "color",
+        "count",
+        "label",
+        "role"
+      ],
+      "title": "VisualItem",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "shape_repairs": {
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "title": "Shape Repairs",
+      "type": "array"
+    },
+    "layout_repairs": {
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "title": "Layout Repairs",
+      "type": "array"
+    },
+    "subquestions": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Subquestions",
+      "type": "array"
+    },
+    "summary": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Summary"
+    },
+    "title": {
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    },
+    "scenes": {
+      "items": {
+        "$ref": "#/$defs/Scene"
+      },
+      "minItems": 1,
+      "title": "Scenes",
+      "type": "array"
+    },
+    "total_duration_ms": {
+      "exclusiveMinimum": 0,
+      "title": "Total Duration Ms",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "title",
+    "scenes",
+    "total_duration_ms"
+  ],
+  "title": "Storyboard",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

@@ -1,0 +1,19 @@
+Tellkit rendering release 0.1.0
+Code is licensed under Apache License 2.0; see LICENSE.
+
+Bundled fonts retain their own SIL Open Font License 1.1:
+- TellkitHappySubset-Regular.ttf: renamed subset of ZCOOL KuaiLe 2.001.
+  Copyright 2018 The ZCOOL KuaiLe Project Authors.
+  Original license: assets/fonts/ZCOOL-OFL.txt.
+  The retained upstream license permits bundling and redistribution of modified
+  versions, requires preserving the license and copyright, and restricts reserved
+  names. The renamed family is Tellkit Happy Subset. No font is sold separately.
+- TellkitSansSubset-Regular.otf: renamed subset of Source Han Sans 2.005R.
+- SourceHanSansCN-Regular.otf: Source Han Sans CN, Adobe.
+  Original license and copyright: assets/fonts/SourceHanSans-LICENSE.txt.
+  The derivative uses Tellkit Sans Subset rather than the reserved name Source.
+These font licenses do not impose their terms on rendered videos.
+
+FFmpeg is installed separately. Its license depends on its build configuration;
+the Docker image uses a GPL-enabled build for libx264. No FFmpeg binary is shipped.
+Python package licenses are recorded in demo/dependency-licenses.json.
